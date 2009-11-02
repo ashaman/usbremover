@@ -26,7 +26,7 @@ procedure TMainFrm.FormCreate(Sender: TObject);
 var
   rm: TUSBManager;
 begin
-  rm := TUSBManager.GetManager;
+//  rm := TUSBManager.GetManager;
 end;
 
 end.
