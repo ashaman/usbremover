@@ -10,3 +10,7 @@ The process of development started today. I have started to implement abstract c
 DarthYarius_0990@mail.ru
 After some consultations we decided that I should do the device manager and Yury - process manager.
 I found a very interesting article for processes and files management. The only difficulty is to translate C++ code to Delphi...
+
+0:35 05.11.2009
+Some difficulties occured with getting size and serial number of flash drive. I hope I'll solve 'em in one-two hours tomorrow.
+And next, the mein problem is to notify all running Windoes applications that the flash drive was ejected

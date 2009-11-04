@@ -27,7 +27,7 @@ var
   rm: TUSBManager;
 begin
   rm := TUSBManager.GetManager;
-//  rm.RemoveDrive(0);
+  rm.RemoveDrive(0);
 end;
 
 end.

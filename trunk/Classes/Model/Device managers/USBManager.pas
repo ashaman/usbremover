@@ -16,8 +16,7 @@ type
   private
     constructor Create;
   protected
-    procedure ProcessMessages(var msg: TMessage); override;
-    procedure DeviceStateChanged(var msg: TMessage); override;
+    function FilterDevices(drivePath: PChar): boolean; override;
   public
     destructor Destroy; override;
     procedure RemoveDrive(index: integer); overload; override;
@@ -33,6 +32,45 @@ uses
 
 var
   Instance: TUSBManager;
+
+//Filters only necessary devices which match the type criteria
+function TUSBManager.FilterDevices(drivePath: PChar): boolean;
+const
+  DEV_FLOPPY = '\Device\Floppy';
+var
+  bufChar: array [0..MAXCHAR-1] of char;
+begin
+  Result := false;
+  //we check if this drive is removable
+  if GetDriveType(drivePath) = DRIVE_REMOVABLE
+  then begin
+
+  {procedure TDriveEjector.CheckForCardReaders;
+var
+  i: integer;
+begin
+  if DrivesCount = 0 then exit;
+
+  for i := 0 to DrivesCount - 1 do
+  begin
+    if GetNoDevicesWithSameParentInst(RemovableDrives[i].ParentDevInst) > 1 then
+      if GetNoDevicesWithSameProductID(RemovableDrives[i].ProductId) > 1 then //Hard drive partitions
+        RemovableDrives[i].IsCardReader:=False
+      else
+        RemovableDrives[i].IsCardReader:=True //Matching devices with parent inst but differing device names are likely to be card readers
+  end;
+end;
+}
+    {checking if the device is a floppy drive}
+    QueryDosDevice(PChar(Copy(drivePath,1,2)),@bufChar[0],MAXCHAR);
+    {checking if the device is a floppy drive}
+    if (Copy(bufChar,1,14) <> DEV_FLOPPY)
+    then begin
+      {check if this device is a card reader}
+      Result := true;
+    end;
+  end;
+end;
 
 //This constructor calls the parent one
 //and passes as parameter removable drive type
@@ -73,11 +111,12 @@ var
   i: integer; {counter}
   ReturnedBytes: DWORD; {fake value}
   PreventFlag: PREVENT_MEDIA_REMOVAL; {prevents media removal}
+  fHandle: THandle;
 begin
   for i := 0 to MAX_ATTEMPTS-1 do
   begin
     //here we try to lock the volume
-    Success := DeviceIoControl(device.Handle, FSCTL_LOCK_VOLUME, nil, 0, nil, 0,
+    Success := DeviceIoControl(fHandle, FSCTL_LOCK_VOLUME, nil, 0, nil, 0,
       ReturnedBytes, nil);
     if not Success
     then begin
@@ -91,22 +130,22 @@ begin
       end; {skip the iteration}
     end {not successful}
     else begin
-      {...notify system about device removal..}
-      SHChangeNotify(SHCNE_MEDIAREMOVED,SHCNF_PATH,device.Path,nil);
       {clear the memory}
       ZeroMemory(@PreventFlag, sizeof(PreventFlag));
       {we dismount the volume...}
-      DeviceIoControl(device.Handle,FSCTL_DISMOUNT_VOLUME, nil, 0, nil, 0,
+      DeviceIoControl(fHandle,FSCTL_DISMOUNT_VOLUME, nil, 0, nil, 0,
         ReturnedBytes, nil);
       {then, we enable volume ejection mechanism...}
-      DeviceIoControl(device.Handle,IOCTL_STORAGE_MEDIA_REMOVAL,@PreventFlag,
+      DeviceIoControl(fHandle,IOCTL_STORAGE_MEDIA_REMOVAL,@PreventFlag,
         sizeof(PreventFlag),nil,0,ReturnedBytes,nil);
       {after, we eject the volume...}
-      DeviceIoControl(device.Handle,IOCTL_STORAGE_EJECT_MEDIA, nil, 0, nil, 0,
+      DeviceIoControl(fHandle,IOCTL_STORAGE_EJECT_MEDIA, nil, 0, nil, 0,
         ReturnedBytes,nil);
       {...and finally we release the device}
-      DeviceIoControl(device.Handle,FSCTL_UNLOCK_VOLUME,nil,0,nil,0,
+      DeviceIoControl(fHandle,FSCTL_UNLOCK_VOLUME,nil,0,nil,0,
         ReturnedBytes,nil);
+      {...notify system about device removal..}
+      SHChangeNotify(SHCNE_MEDIAREMOVED,SHCNF_PATH,device.Path,nil);
       {and release all resources}
       device.Destroy;
       fDevices.Pack;
@@ -115,7 +154,7 @@ begin
   end;
 end;
 
-//This routine
+//This method makes force drive removal
 procedure TUSBManager.ForcedRemoveDrive;
 begin
 end;
@@ -128,15 +167,5 @@ begin
   end;
   Result := Instance;
 end;
-
-procedure TUSBManager.ProcessMessages(var msg: TMessage);
-begin
-end;
-
-procedure TUSBManager.DeviceStateChanged(var msg: TMessage);
-begin
-end;
-
-
 
 end.

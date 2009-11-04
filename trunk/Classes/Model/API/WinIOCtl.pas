@@ -1,6 +1,5 @@
 {
-  Partial translation of WinIOCtl.h
-  Translated 1.11.2009 by JLB Industries
+  Partial translation of WinIOCtl.h, Dbt.h, setupapi.h and other Win SDK headers
 }
 unit WinIOCtl;
 
@@ -9,31 +8,23 @@ interface
 uses
   Windows, SysUtils;
 
+//Structure align for unpacked structures
+{$ALIGN 8}
+
+const
+  DeviceMask = '%s:';
+  VolumeMask = '\\.\' + DeviceMask;
+
+  setupapi = 'SetupApi.dll';
+  cfgmgr = 'cfgmgr32.dll';
+
 {
-  STORAGE_BUS_TYPE
-  Minimum supported client:	Windows XP
-  Minimum supported server:	Windows Server 2003
-  Header: Winioctl.h
+  STRUCTURES AND CONSTANTS FROM WINIOCTL.H
+  Partially translated by J.L.Blackrow (e-mail: DarthYarius_0990@mail.ru)
+  Partially translated by Alexander Bagel (
+  //* Copyright : © Fangorn Wizards Lab 1998 - 2009.
+  //* Home Page : http://rouse.drkb.ru
 }
-
-type
-  STORAGE_BUS_TYPE=
-  (
-    BusTypeUnknown       = $00,
-    BusTypeScsi          = $01,
-    BusTypeAtapi         = $02,
-    BusTypeAta           = $03,
-    BusType1394          = $04,
-    BusTypeSsa           = $05,
-    BusTypeFibre         = $06,
-    BusTypeUsb           = $07,
-    BusTypeRAID          = $08,
-    BusTypeiSCSI         = $09,
-    BusTypeSas           = $0A,
-    BusTypeSata          = $0B,
-    BusTypeMaxReserved   = $7F
-  );
-
 
 const
   FILE_DEVICE_DISK = $00000007;
@@ -97,12 +88,216 @@ const
   IOCTL_STORAGE_READ_CAPACITY = (IOCTL_STORAGE_BASE shl 16) or ($0450 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
   IOCTL_STORAGE_QUERY_PROPERTY = $2D1400;
 
+  GUID_DEVINTERFACE_DISK: TGUID = (
+    D1:$53f56307; D2:$b6bf; D3:$11d0; D4:($94, $f2, $00, $a0, $c9, $1e, $fb, $8b));
+
+type
+  DEVICE_TYPE = DWORD;
+  PStorageDeviceNumber = ^TStorageDeviceNumber;
+  TStorageDeviceNumber = packed record
+    DeviceType: DEVICE_TYPE;
+    DeviceNumber: DWORD;
+    PartitionNumber: DWORD;
+  end;
+
+  STORAGE_BUS_TYPE=
+  (
+    BusTypeUnknown       = $00,
+    BusTypeScsi          = $01,
+    BusTypeAtapi         = $02,
+    BusTypeAta           = $03,
+    BusType1394          = $04,
+    BusTypeSsa           = $05,
+    BusTypeFibre         = $06,
+    BusTypeUsb           = $07,
+    BusTypeRAID          = $08,
+    BusTypeiSCSI         = $09,
+    BusTypeSas           = $0A,
+    BusTypeSata          = $0B,
+    BusTypeMaxReserved   = $7F
+  );
+
+
+{
+  STRUCTURES, CONSTANTS AND FUNCTIONS FROM SETUPAPI.H
+  Partially translated by Alexander Bagel (
+  //* Copyright : © Fangorn Wizards Lab 1998 - 2009.
+  //* Home Page : http://rouse.drkb.ru
+}
+
+const
+  ANYSIZE_ARRAY = 1024;
+  DIGCF_PRESENT         = $00000002;
+  DIGCF_DEVICEINTERFACE = $00000010;
+
+type
+  HDEVINFO = THandle;
+
+  PSPDevInfoData = ^TSPDevInfoData;
+  SP_DEVINFO_DATA = packed record
+    cbSize: DWORD;
+    ClassGuid: TGUID;
+    DevInst: DWORD; // DEVINST handle
+    Reserved: PULONG;
+  end;
+
+  TSPDevInfoData = SP_DEVINFO_DATA;
+
+  PSPDeviceInterfaceData = ^TSPDeviceInterfaceData;
+  SP_DEVICE_INTERFACE_DATA = packed record
+    cbSize: DWORD;
+    InterfaceClassGuid: TGUID;
+    Flags: DWORD;
+    Reserved: PULONG;
+  end;
+
+  TSPDeviceInterfaceData = SP_DEVICE_INTERFACE_DATA;
+
+  PSPDeviceInterfaceDetailDataA = ^TSPDeviceInterfaceDetailDataA;
+  PSPDeviceInterfaceDetailData = PSPDeviceInterfaceDetailDataA;
+  SP_DEVICE_INTERFACE_DETAIL_DATA_A = packed record
+    cbSize: DWORD;
+    DevicePath: array [0..ANYSIZE_ARRAY - 1] of AnsiChar;
+  end;
+  TSPDeviceInterfaceDetailDataA = SP_DEVICE_INTERFACE_DETAIL_DATA_A;
+  TSPDeviceInterfaceDetailData = TSPDeviceInterfaceDetailDataA;
+
+  function SetupDiGetClassDevsA(ClassGuid: PGUID; const Enumerator: PAnsiChar;
+    hwndParent: HWND; Flags: DWORD): HDEVINFO; stdcall; external setupapi;
+
+  function SetupDiDestroyDeviceInfoList(
+    DeviceInfoSet: HDEVINFO): LongBool; stdcall; external setupapi;
+
+  function SetupDiEnumDeviceInterfaces(DeviceInfoSet: HDEVINFO;
+    DeviceInfoData: PSPDevInfoData; const InterfaceClassGuid: TGUID;
+    MemberIndex: DWORD; var DeviceInterfaceData: TSPDeviceInterfaceData):
+    LongBool; stdcall; external setupapi;
+
+  function SetupDiGetDeviceInterfaceDetailA(DeviceInfoSet: HDEVINFO;
+    DeviceInterfaceData: PSPDeviceInterfaceData;
+    DeviceInterfaceDetailData: PSPDeviceInterfaceDetailDataA;
+    DeviceInterfaceDetailDataSize: DWORD; var RequiredSize: DWORD;
+    Device: PSPDevInfoData): LongBool; stdcall; external setupapi;
+
+
+{
+  CONSTANTS AND TYPES FROM CFGMGR32.H
+  Partially translated by Alexander Bagel (
+  //* Copyright : © Fangorn Wizards Lab 1998 - 2009.
+  //* Home Page : http://rouse.drkb.ru
+}
+
+const
+  CR_SUCCESS = 0;
+
+  PNP_VetoTypeUnknown          = 0;
+  PNP_VetoLegacyDevice         = 1;
+  PNP_VetoPendingClose         = 2;
+  PNP_VetoWindowsApp           = 3;
+  PNP_VetoWindowsService       = 4;
+  PNP_VetoOutstandingOpen      = 5;
+  PNP_VetoDevice               = 6;
+  PNP_VetoDriver               = 7;
+  PNP_VetoIllegalDeviceRequest = 8;
+  PNP_VetoInsufficientPower    = 9;
+  PNP_VetoNonDisableable       = 10;
+  PNP_VetoLegacyDriver         = 11;  
+  PNP_VetoInsufficientRights   = 12;
+
+type
+  DEVINST = DWORD;
+  CONFIGRET = DWORD;
+
+  PPNP_VETO_TYPE = ^PNP_VETO_TYPE;
+  PNP_VETO_TYPE = DWORD;
+
+  function CM_Get_Parent(var dnDevInstParent: DEVINST;
+    dnDevInst: DEVINST; ulFlags: ULONG): CONFIGRET; stdcall;
+    external cfgmgr;
+
+  function CM_Request_Device_EjectA(dnDevInst: DEVINST;
+    pVetoType: PPNP_VETO_TYPE; pszVetoName: PWideChar;
+    ulNameLength: ULONG; ulFlags: ULONG): CONFIGRET; stdcall;
+    external setupapi;
+
+{
+  CONSTANTS AND TYPES FROM NTDDSCSI.H
+  Partially translated by Alexander Bagel (
+  //* Copyright : © Fangorn Wizards Lab 1998 - 2009.
+  //* Home Page : http://rouse.drkb.ru
+
+}
+const
+  SCSI_IOCTL_DATA_IN = 1;
+  SCSIOP_MECHANISM_STATUS = $BD;
+
+type
+  USHORT = Word;
+
+  PSCSI_PASS_THROUGH_DIRECT = ^SCSI_PASS_THROUGH_DIRECT;
+  _SCSI_PASS_THROUGH_DIRECT = {packed} record
+    Length: USHORT;
+    ScsiStatus: UCHAR;
+    PathId: UCHAR;
+    TargetId: UCHAR;
+    Lun: UCHAR;
+    CdbLength: UCHAR;
+    SenseInfoLength: UCHAR;
+    DataIn: UCHAR;
+    DataTransferLength: ULONG;
+    TimeOutValue: ULONG;
+    DataBuffer: ULONG;
+    SenseInfoOffset: ULONG;
+    Cdb: array [0..15] of UCHAR;
+  end;
+  SCSI_PASS_THROUGH_DIRECT = _SCSI_PASS_THROUGH_DIRECT;
+
+  TSCSIPassThroughDirectBuffer = record
+    Header: SCSI_PASS_THROUGH_DIRECT;
+    SenseBuffer: array [0..31] of UCHAR;
+    DataBuffer: array [0..191] of UCHAR;
+  end;         
+
+
+{
+  PARTIAL TRANSLATION OF OTHER MS SDK HEADERS
+  Partially translated by J.L.Blackrow (e-mail: DarthYarius_0990@mail.ru)
+}
+const
   IOCTL_VOLUME_LOGICAL_TO_PHYSICAL = $560020;
   IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS = $560000;
 
   FSCTL_LOCK_VOLUME = (FILE_DEVICE_FILE_SYSTEM shl 16) or (6 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
   FSCTL_UNLOCK_VOLUME = (FILE_DEVICE_FILE_SYSTEM shl 16) or (7 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
   FSCTL_DISMOUNT_VOLUME = (FILE_DEVICE_FILE_SYSTEM shl 16) or (8 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+
+  {Window messages}
+
+  {A request to change the current configuration (dock or undock) has been canceled}
+  DBT_CONFIGCHANGECANCELED = $0019;
+  {The current configuration has changed, due to a dock or undock}
+  DBT_CONFIGCHANGED = $0018;
+  {A custom event has occurred}
+  DBT_CUSTOMEVENT = $8006;
+  {A device or piece of media has been inserted and is now available}
+  DBT_DEVICEARRIVAL = $8000;
+  {Permission is requested to remove a device or piece of media.
+  Any application can deny this request and cancel the removal}
+  DBT_DEVICEQUERYREMOVE = $8001;
+  {A request to remove a device or piece of media has been canceled}
+  DBT_DEVICEQUERYREMOVEFAILED = $8002;
+  {A device or piece of media has been removed}
+  DBT_DEVICEREMOVECOMPLETE = $8004;
+  {A device or piece of media is about to be removed. Cannot be denied}
+  DBT_DEVICEREMOVEPENDING = $8003;
+  {A device-specific event has occurred}
+  DBT_DEVICETYPESPECIFIC = $8005;
+  {A device has been added to or removed from the system}
+  DBT_DEVNODES_CHANGED = $0007;
+  {Permission is requested to change the current configuration (dock or undock)}
+  DBT_QUERYCHANGECONFIG = $0017;
+  {The meaning of this message is user-defined}
+  DBT_USERDEFINED = $FFFF;
 
 type
   //type definition for device descriptor
@@ -158,6 +353,23 @@ type
 
   PREVENT_MEDIA_REMOVAL  = record
     PreventMediaRemoval : ByteBool;
+  end;
+
+  //Token from DBT.h
+  DEV_BROADCAST_HDR     = ^PDEV_BROADCAST_HDR;
+  PDEV_BROADCAST_HDR  = packed record
+    dbch_size         : DWORD;
+    dbch_devicetype   : DWORD;
+    dbch_reserved     : DWORD;
+  end;
+
+  DEV_BROADCAST_VOLUME    = ^PDEV_BROADCAST_VOLUME;
+  PDEV_BROADCAST_VOLUME = packed record
+    dbcv_size           : DWORD;
+    dbcv_devicetype     : DWORD;
+    dbcv_reserved       : DWORD;
+    dbcv_unitmask       : DWORD;
+    dbcv_flags          : WORD;
   end;
 
 implementation
