@@ -18,9 +18,8 @@ type
     fDevices: TList;
     constructor Create(deviceType: integer);
     procedure NotifyAll;
-    function FilterDevices(drivePath: PChar): boolean;
-    procedure ProcessMessages(var msg: TMessage); virtual; abstract;
-    procedure DeviceStateChanged(var msg: TMessage); virtual; abstract;
+    function FilterDevices(drivePath: PChar): boolean; virtual; abstract;
+    procedure ProcessMessages(var msg: TMessage); message WM_DeviceChange;
   public
     destructor Destroy; override;
 
@@ -44,17 +43,7 @@ type
 {==============================================================================}
 implementation
 
-uses SysUtils;
-
-//Filters only necessary devices which match the type criteria
-function TDeviceManager.FilterDevices(drivePath: PChar): boolean;
-begin
-  Result := false;
-  if GetDriveType(drivePath) = fDeviceType
-  then begin
-    Result := true;
-  end;
-end;
+uses SysUtils, WinIOCtl;
 
 //This function gets all logical drives in system
 procedure TDeviceManager.GetDrives;
@@ -68,7 +57,6 @@ var
   driveNumber: integer; //number of drives
   sizeOfChar: integer; {size of 1 character in bytes:
                        (ANSI - 1 byte, Unicode - 2 bytes)}
-  startIndex: integer; {start index for string search}
 begin
   //here we get size needed for buffer
   bufSize := GetLogicalDriveStrings(0,nil);
@@ -79,25 +67,12 @@ begin
     GetLogicalDriveStrings(bufSize,drives);
     sizeOfChar := sizeof(drives[0]);
     driveNumber := (bufSize-1) div charCount; //we count the quantity of drives
-    startIndex := 0;
-    {skipping all floppy drives}
-    if (Pos(FLOPPY_DRIVE_1,drives) <> -1)
-    then begin
-      inc(startIndex);
-      drives := drives + charCount*sizeOfChar;
-      if (Pos(FLOPPY_DRIVE_2,drives) <> -1)
-      then begin
-        inc(startIndex);
-        drives := drives + charCount*sizeOfChar;
-      end;
-    end;
-    {filtering other devices}
-    for i := startIndex to driveNumber-1 do
+    for i := 1 to driveNumber-1 do
     begin
-      if FilterDevices(drives)
-      then begin
-        fDevices.Add(TDevice.Create(drives,i));
-      end; {filter}
+      {if FilterDevices(drives)
+      then begin}
+        fDevices.Add(TDevice.Create(drives+charCount,i));
+      //end; {filter}
       drives := drives + charCount*sizeOfChar;  //move to the next list item
     end; {drives}
     FreeMem(pDrives,bufSize); //we release resources
@@ -163,7 +138,7 @@ begin
   Result := nil;
   while (i<=self.fDevices.Count-1) and not found do
   begin
-    if TDevice(fDevices.Items[i]).Handle = handle
+    if true
     then begin
       Result := TDevice(fDevices.Items[i]);
       found := true;
@@ -214,5 +189,23 @@ begin
     end;
   end;
 end;
+
+procedure TDeviceManager.ProcessMessages(var msg: TMessage);
+begin
+  case msg.WParam of
+    DBT_DEVICEREMOVECOMPLETE:;
+    DBT_DEVICEQUERYREMOVE:;
+    DBT_DEVICEREMOVEPENDING:;
+    DBT_DEVICEARRIVAL:
+      if DEV_BROADCAST_HDR(msg.LParam)^.dbch_devicetype = fDeviceType
+      then begin
+        if DEV_BROADCAST_VOLUME(msg.LParam)^.dbcv_flags = 0
+        then begin
+          fDevices.Add(TDevice.Create('',fDevices.Count+1));
+        end;
+      end;
+  end;
+end;
+
 
 end.

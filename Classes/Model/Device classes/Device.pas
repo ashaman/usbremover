@@ -11,10 +11,6 @@ unit Device;
 interface
 uses
   WinIOCtl;
-const
-  FLOPPY_DRIVE_1 = 'A';
-  FLOPPY_DRIVE_2 = 'B';
-
 type
   {all kinds of devices defined in WinAPI enums}
   TBusType = (btSCSI, btATAPI, btATA, btFireWire, btSSA, btFibre, btUSB,
@@ -23,7 +19,6 @@ type
   //CLASS-WRAPPER FOR DEVICE
   TDevice = class(TObject)
   private
-    fHandle: THandle; {handle for device}
     fPath: PChar; {device path}
     fNumber: Integer; {number of drive in system}
     fVolumeLabel: PChar; {volume label}
@@ -34,7 +29,10 @@ type
     fProductRevision: PChar; {product revision}
     fSize: Int64; {volume size}
     fFileSystemType: PChar; {file system type on the device}
-    function GetHandle: THandle;
+    procedure GetAPIDeviceDescription(fHandle: THandle);
+    procedure GetAPIVolumeInformation(fHandle: THandle);
+    function APICharArrayToPChar(DeviceDescriptor: STORAGE_DEVICE_DESCRIPTOR; offset: Cardinal): PChar;
+    {getters}
     function GetPath: PChar;
     function GetVolumeLabel: PChar;
     function GetBusType: TBusType;
@@ -45,11 +43,11 @@ type
     function GetFileSystemType: PChar;
     function GetVolumeID: longword;
     function GetDriveNumber: Integer;
+    {end getters}
     class function StorageBusTypeToTBusType(sBusType: STORAGE_BUS_TYPE): TBusType;
   public
     constructor Create(path: PChar; index: integer);
     destructor Destroy; override;
-    property Handle: THandle read GetHandle; {Device handle}
     property Path: PChar read GetPath; {Root device directory}
     property VolumeLabel: PChar read GetVolumeLabel; {Volume label}
     property BusType: TBusType read GetBusType; {Bus type}
@@ -65,119 +63,222 @@ type
 {==============================================================================}
 implementation
 uses
-  Windows, DeviceException, SysUtils, magwmi;
+  Windows, DeviceException, SysUtils;
 const
   MAXARRAYSIZE = 512;
-
-{
-  Class constructor
-  Gets info about device
-}
-constructor TDevice.Create(path: PChar; index: integer);
+  FLOPPY_DRIVE_1 = 'A';
+  FLOPPY_DRIVE_2 = 'B';
 type
   PCharArray = ^TCharArray; {pointer to char array}
   TCharArray = array [0..MAXARRAYSIZE-1] of char;
+
+{This function gets the number of device in system}
+function GetAPIDeviceNumber(handle: THandle): DWORD;
+var
+  deviceNumber: TStorageDeviceNumber; {structure for getting device storage number}
+  Success: LongBool; {flag indicates the success (or fail) of the function call}
+  dwBytesReturned: DWORD; {bytes returned by API functions}
+begin
+  Result := 0;
+  ZeroMemory(@deviceNumber,sizeof(TStorageDeviceNumber));
+  {query to device driver}
+  Success := DeviceIoControl(handle, IOCTL_STORAGE_GET_DEVICE_NUMBER, nil,
+    0, @deviceNumber, SizeOf(TStorageDeviceNumber), dwBytesReturned, nil);
+  if not Success
+  then begin
+    EDeviceException.Create(SysErrorMessage(GetLastError));
+  end {DeviceIoControl failed}
+  else begin
+    Result := deviceNumber.DeviceNumber;
+  end;
+  ZeroMemory(@deviceNumber,sizeof(TStorageDeviceNumber));
+end;
+
+procedure GetInfo(const driveLetter: char);
+var
+  hFile: THandle; {device file handle}
+  dwBytesReturned: DWORD; {bytes returned by API functions}
+  dwDeviceNumber: DWORD; {device number returned in TStorageDeviceNumber}
+  flashGUID: TGUID; {flash drives GUID}
+  hDevInfo: THandle;
+begin
+  {we open the volume as file}
+  hFile := CreateFile(PChar(Format(VolumeMask, [driveLetter])), 0,
+    FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
+  try
+    if hFile = INVALID_HANDLE_VALUE
+    then begin
+      EDeviceException.Create(SysErrorMessage(GetLastError));
+    end {system exception}
+    else begin
+      dwDeviceNumber := GetAPIDeviceNumber(hFile);
+      flashGUID := GUID_DEVINTERFACE_DISK;
+      hDevInfo := SetupDiGetClassDevsA(@flashGUID, nil, 0, DIGCF_PRESENT or
+        DIGCF_DEVICEINTERFACE);
+      if hDevInfo = INVALID_HANDLE_VALUE then
+      begin
+        raise EDeviceException.Create(SysErrorMessage(GetLastError));
+      end;
+    end; {successful initialization}
+  finally
+    try
+      CloseHandle(hFile);
+    except {exception supression}
+    end;
+  end; {finally}
+end;
+
+{Converts char arrays to PChar}
+function TDevice.APICharArrayToPChar(DeviceDescriptor: STORAGE_DEVICE_DESCRIPTOR;
+  offset: Cardinal): PChar;
+var
+  buf: PChar; {string for buffer}
+begin
+  Result := '';
+  if offset <> 0
+  then begin
+    buf := @PCharArray(@DeviceDescriptor)^[offset];
+    Result := PChar(Trim(buf));
+  end;
+end;
+
+{Gets device description from STORAGE_DEVICE_DESCRIPTOR structure}
+procedure TDevice.GetAPIDeviceDescription(fHandle: THandle);
 var
   DeviceDescriptor: STORAGE_DEVICE_DESCRIPTOR; {system device descriptor}
-  PropQuery: STORAGE_PROPERTY_QUERY; {property query}
-  DiskExtent: TVolumeDiskExtents; {disk extent variable}
-  //LengthInfo: GET_LENGTH_INFORMATION; {length information}
   ReturnedBytes: DWORD; {buffer for returned bytes}
+  PropQuery: STORAGE_PROPERTY_QUERY; {property query}
   Success: LongBool; {indicates if a function call was successful}
-  FSFlags: DWORD; {File system flags set for device}
+  hDev: THandle;
+  DskSize: GET_LENGTH_INFORMATION;
+begin
+    //zero memofy for pointers
+    ZeroMemory(@PropQuery, sizeof(PropQuery));
+    ZeroMemory(@DeviceDescriptor, sizeof(DeviceDescriptor));
+    //getting size of structure
+    DeviceDescriptor.Size := sizeof(DeviceDescriptor);
+    //we call DeviceIOControl to get info about the device
+    //Returned bytes has no meaning in this case
+    Success := DeviceIoControl(fHandle,IOCTL_STORAGE_QUERY_PROPERTY,@PropQuery,
+      sizeof(PropQuery), @DeviceDescriptor, DeviceDescriptor.Size,
+      ReturnedBytes, nil);
+    if not Success
+    then begin
+      raise EDeviceException.Create(SysErrorMessage(GetLastError));
+    end {exception - no such device}
+    else begin
+      if (DeviceDescriptor.BusType = BusTypeUnknown) or
+        (DeviceDescriptor.BusType = BusTypeMaxReserved)
+      then begin
+        raise EDeviceException.Create(SysErrorMessage(GetLastError)); //unknown bus type
+      end {unknown bus type}
+      else begin
+        {Converting bus type to TBusType}
+        fBusType := TDevice.StorageBusTypeToTBusType(DeviceDescriptor.BusType);
+        {getting disk size}
+        {
+
+        LINKS
+        http://msdn.microsoft.com/en-us/library/aa510280.aspx
+        http://msdn.microsoft.com/en-us/library/aa363147%28VS.85%29.aspx
+        http://msdn.microsoft.com/en-us/library/aa363215%28VS.85%29.aspx
+        http://msdn.microsoft.com/en-us/library/aa363432%28VS.85%29.aspx
+        http://msdn.microsoft.com/en-us/library/aa363427%28VS.85%29.aspx
+        http://msdn.microsoft.com/en-us/library/aa363431%28VS.85%29.aspx
+        http://forum.sources.ru/index.php?showtopic=146127
+        http://msdn.microsoft.com/en-us/library/cc526325.aspx
+        http://forum.shelek.ru/index.php/topic,4477.0.html
+
+          also get media serial -
+            through MEDIA_SERIAL_NUMBER_DATA and
+            IOCTL_STORAGE_GET_MEDIA_SERIAL_NUMBER
+
+          fNumber - get through DeviceIoControl(
+  (HANDLE) hDevice,                        // handle to device
+  IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS,    // dwIoControlCode
+  NULL,                                    // lpInBuffer
+  0,                                       // nInBufferSize
+  (LPVOID) lpOutBuffer,                    // output buffer
+  (DWORD) nOutBufferSize,                  // size of output buffer
+  (LPDWORD) lpBytesReturned,               // number of bytes returned
+  (LPOVERLAPPED) lpOverlapped              // OVERLAPPED structure
+);
+        hDev := CreateFile(PChar('\\\\.\\PhysicalDrive2'),0,FILE_SHARE_READ or
+          FILE_SHARE_WRITE,nil, OPEN_EXISTING,0, 0);
+        DeviceIoControl(hDev,  // device to be queried
+      IOCTL_DISK_GET_LENGTH_INFO,  // operation to perform
+                             nil, 0, // no input buffer
+                            @DskSize, sizeof(DskSize),     // output buffer
+                            ReturnedBytes,                 // # bytes returned
+                            nil);
+      fSize := DskSize.Length;
+      //NOW IT WORKS... BUT VERY STRANGE...
+      }
+        fSize := DiskSize(ord(fPath[0])-ord(FLOPPY_DRIVE_1)+1);
+        {Getting vendor ID}
+        fVendorID := self.APICharArrayToPChar(DeviceDescriptor,
+          DeviceDescriptor.VendorIdOffset);
+        {Getting product revision}
+        fProductRevision := self.APICharArrayToPChar(DeviceDescriptor,
+          DeviceDescriptor.ProductRevisionOffset);
+        {Getting product ID}
+        fProductID := self.APICharArrayToPChar(DeviceDescriptor,
+          DeviceDescriptor.ProductIdOffset);
+      end;
+    end;
+    ZeroMemory(@PropQuery, sizeof(PropQuery));
+    ZeroMemory(@DeviceDescriptor, sizeof(DeviceDescriptor));
+end;
+
+{Gets volume information}
+procedure TDevice.GetAPIVolumeInformation(fHandle: THandle);
+var
   VolumeNameBuf, FileSystemNameBuffer: TCharArray; {buffers for strings}
-  buf: PChar; {string for buffer}
+  Success: LongBool; {indicates if a function call was successful}
+  ReturnedBytes: DWORD; {buffer for returned bytes}
+  FSFlags: DWORD; {File system flags set for device}
+begin
+  {Getting volume information}
+  Success := GetVolumeInformation(fPath,VolumeNameBuf,MAXCHAR,
+    @fVolumeID,ReturnedBytes,FSFlags,FileSystemNameBuffer,MAXCHAR);
+  if not Success
+  then begin
+    raise EDeviceException.Create(SysErrorMessage(GetLastError));
+  end {cannot get volume info}
+  else begin
+    {setting volume label and FS type}
+    fVolumeLabel := PChar(@VolumeNameBuf);
+    fFileSystemType := PChar(@FileSystemNameBuffer);
+  end;
+end;
+
+{Class constructor. Gets info about device}
+constructor TDevice.Create(path: PChar; index: integer);
+var
+  fHandle: THandle; {device file handle}
 begin
   inherited Create;
   {here we save root drive path}
   fPath := path;
+  fHandle := CreateFile(PChar('\\.\'+path[0]+':'),GENERIC_READ or
+    GENERIC_WRITE,FILE_SHARE_READ or FILE_SHARE_WRITE,nil,
+    OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
   try
     //we open new drive as file
-    fHandle := CreateFile(PChar('\\.\'+path[0]+':'),GENERIC_READ or
-      GENERIC_WRITE,FILE_SHARE_READ or
-      FILE_SHARE_WRITE,nil,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
     if fHandle = INVALID_HANDLE_VALUE {invalid handle}
     then begin
       raise EDeviceException.Create(SysErrorMessage(GetLastError)); {opening failed}
     end {exception - invalid file}
     else begin
-      {there we get volume size}
-      //zero memofy for pointers
-      ZeroMemory(@PropQuery, sizeof(PropQuery));
-      ZeroMemory(@DeviceDescriptor, sizeof(DeviceDescriptor));
-      //getting size of structure
-      DeviceDescriptor.Size := sizeof(DeviceDescriptor);
-      //we call DeviceIOControl to get info about the device
-      //Returned bytes has no meaning in this case
-      Success := DeviceIoControl(fHandle,IOCTL_STORAGE_QUERY_PROPERTY,@PropQuery,
-        sizeof(PropQuery), @DeviceDescriptor, DeviceDescriptor.Size,
-        ReturnedBytes, nil);
-      if not Success
-      then begin
-        raise EDeviceException.Create(SysErrorMessage(GetLastError)); //DeviceIOControl
-      end {exception - no such device}                           //failed
-      else begin
-        if success then
-        if (DeviceDescriptor.BusType = BusTypeUnknown) or
-          (DeviceDescriptor.BusType = BusTypeMaxReserved)
-        then begin
-          raise EDeviceException.Create(SysErrorMessage(GetLastError)); //unknown bus type
-        end {unknown bus type}
-        else begin
-          {Converting bus type to TBusType}
-          fBusType := TDevice.StorageBusTypeToTBusType(DeviceDescriptor.BusType);
-          {Getting volume information}
-          Success := GetVolumeInformation(fPath,VolumeNameBuf,MAXCHAR,
-            @fVolumeID,ReturnedBytes,FSFlags,FileSystemNameBuffer,MAXCHAR);
-          if not Success
-          then begin
-            raise EDeviceException.Create(SysErrorMessage(GetLastError));
-          end {cannot get volume info}
-          else begin
-            {setting volume label and FS type}
-            fVolumeLabel := PChar(@VolumeNameBuf);
-            fFileSystemType := PChar(@FileSystemNameBuffer);
-            //we get the number of drive in system
-            ZeroMemory(@DiskExtent,sizeof(DiskExtent));
-            Success := DeviceIoControl(fHandle,IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS,
-              nil,0,@DiskExtent,sizeof(DiskExtent),ReturnedBytes,
-              nil);
-            if not Success
-            then begin
-              raise EDeviceException.Create(SysErrorMessage(GetLastError));
-            end
-            else begin
-              {getting disk size}
-              fSize := DiskSize(ord(fPath[0])-ord(FLOPPY_DRIVE_1)+1);
-              {Getting vendor ID}
-              if DeviceDescriptor.VendorIdOffset <> 0
-              then begin
-                buf := @PCharArray(@DeviceDescriptor)^[DeviceDescriptor.VendorIdOffset];
-                fVendorID := PChar(Trim(buf));
-              end;
-              {Getting product revision}
-              if DeviceDescriptor.ProductRevisionOffset <> 0
-              then begin
-                buf := @PCharArray(@DeviceDescriptor)^[DeviceDescriptor.ProductRevisionOffset];
-                fProductRevision := PChar(Trim(buf));
-              end;
-              {Getting product ID}
-              if DeviceDescriptor.ProductIdOffset <> 0
-              then begin
-                buf := @PCharArray(@DeviceDescriptor)^[DeviceDescriptor.ProductIdOffset];
-                fProductID := PChar(Trim(buf));
-              end;
-            end; {got drive number}
-          end; {got volume info}
-        end; {bus inited successfully}
-      end; {success - device found}
+      {getting all necessary info about volume}
+      GetAPIDeviceDescription(fHandle);
+      GetAPIVolumeInformation(fHandle);
     end; {success - file created}
   finally
-    if fHandle <> INVALID_HANDLE_VALUE
-    then begin
-      ZeroMemory(@PropQuery, sizeof(PropQuery));
-      ZeroMemory(@DeviceDescriptor, sizeof(DeviceDescriptor));
-    end; {close handle}
+    try
+      CloseHandle(fHandle);
+    except {supress exception}
+    end;
   end;
 end;
 
@@ -189,10 +290,6 @@ end;
 {
   Getters and setters
 }
-function TDevice.GetHandle: THandle;
-begin
-  Result := fHandle;
-end;
 
 function TDevice.GetPath: PChar;
 begin
