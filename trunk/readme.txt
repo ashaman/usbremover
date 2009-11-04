@@ -5,3 +5,8 @@ We wanted to do a very useful application for Windows and we noticed that there'
 14:07 31.10.2009
 DarthYarius_0990@mail.ru
 The process of development started today. I have started to implement abstract class for device manager.
+
+17:32 03.11.2009
+DarthYarius_0990@mail.ru
+After some consultations we decided that I should do the device manager and Yury - process manager.
+I found a very interesting article for processes and files management. The only difficulty is to translate C++ code to Delphi...
