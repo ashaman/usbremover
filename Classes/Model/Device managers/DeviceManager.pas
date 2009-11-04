@@ -1,8 +1,11 @@
+{
+  Abstract class - parent class for all device managers
+}
 unit DeviceManager;
 
 interface
 uses
-  Windows, Classes, Device, DeviceException;
+  Windows, Classes, Device, DeviceException, Messages;
 
 type
   //Abstract class for device manager
@@ -16,18 +19,22 @@ type
     constructor Create(deviceType: integer);
     procedure NotifyAll;
     function FilterDevices(drivePath: PChar): boolean;
+    procedure ProcessMessages(var msg: TMessage); virtual; abstract;
+    procedure DeviceStateChanged(var msg: TMessage); virtual; abstract;
   public
     destructor Destroy; override;
 
     //These functions depend on device type
-    procedure RemoveDrive; virtual; abstract;
-    procedure ForcedRemoveDrive; virtual; abstract;
+    procedure RemoveDrive(index: integer); overload; virtual; abstract;
+    procedure RemoveDrive(device: TDevice); overload; virtual; abstract;
+    procedure ForcedRemoveDrive(index: integer); virtual; abstract;
 
     //These funtions are common for all devices
     function GetBlockedFiles: TStrings;
     function GetBlockerID: HWND;
     function GetDeviceInfo(handle: THandle): TDevice; overload;
     function GetDeviceInfo(name: PChar): TDevice; overload;
+    function GetDeviceCount: integer;
 
     //These functions add event handlers from listeners
     procedure AddHandler(Handler: TNotifyEvent);
@@ -72,11 +79,19 @@ begin
     GetLogicalDriveStrings(bufSize,drives);
     sizeOfChar := sizeof(drives[0]);
     driveNumber := (bufSize-1) div charCount; //we count the quantity of drives
-    {!!! VERY BAD!!!}
-    startIndex := 1;
-    drives := drives + charCount*sizeOfChar;
-    {skip floppy drive!!!}
-
+    startIndex := 0;
+    {skipping all floppy drives}
+    if (Pos(FLOPPY_DRIVE_1,drives) <> -1)
+    then begin
+      inc(startIndex);
+      drives := drives + charCount*sizeOfChar;
+      if (Pos(FLOPPY_DRIVE_2,drives) <> -1)
+      then begin
+        inc(startIndex);
+        drives := drives + charCount*sizeOfChar;
+      end;
+    end;
+    {filtering other devices}
     for i := startIndex to driveNumber-1 do
     begin
       if FilterDevices(drives)
@@ -129,6 +144,11 @@ end;
 function TDeviceManager.GetBlockedFiles: TStrings;
 begin
   Result := nil;
+end;
+
+function TDeviceManager.GetDeviceCount: integer;
+begin
+  Result := fDevices.Count;
 end;
 
 //This function searches the device by its handle

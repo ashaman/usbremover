@@ -3,6 +3,7 @@
   Contains definition of TDevice class which represents all the basic info about
   device.
   Copyright JLB Industries and Wikuim software, 2009
+  Finished 4.11.2009
   This program is FREEWARE.
 }
 unit Device;
@@ -24,6 +25,7 @@ type
   private
     fHandle: THandle; {handle for device}
     fPath: PChar; {device path}
+    fNumber: Integer; {number of drive in system}
     fVolumeLabel: PChar; {volume label}
     fVolumeID: longword; {volume ID}
     fBusType: TBusType; {device bus type}
@@ -42,6 +44,7 @@ type
     function GetVolumeSize: Int64;
     function GetFileSystemType: PChar;
     function GetVolumeID: longword;
+    function GetDriveNumber: Integer;
     class function StorageBusTypeToTBusType(sBusType: STORAGE_BUS_TYPE): TBusType;
   public
     constructor Create(path: PChar; index: integer);
@@ -55,7 +58,8 @@ type
     property ProductID: PChar read GetProductID; {Product ID}
     property VolumeSize: Int64 read GetVolumeSize; {Volume size}
     property FileSystemType: PChar read GetFileSystemType; {FS type}
-    property VolumeID: longword read GetVolumeID;
+    property VolumeID: longword read GetVolumeID; {volume ID}
+    property DriveNumber: integer read GetDriveNumber; {physical drive number}
   end;
 
 {==============================================================================}
@@ -64,65 +68,6 @@ uses
   Windows, DeviceException, SysUtils, magwmi;
 const
   MAXARRAYSIZE = 512;
-
-type
-  //type definition for device descriptor
-  STORAGE_DEVICE_DESCRIPTOR = packed record
-    Version: ULONG;
-    Size: ULONG;
-    DeviceType: UCHAR;
-    DeviceTypeModifier: UCHAR;
-    RemovableMedia: boolean;
-    CommandQueueing: boolean;
-    VendorIdOffset: ULONG;
-    ProductIdOffset: ULONG;
-    ProductRevisionOffset: ULONG;
-    SerialNumberOffset: ULONG;
-    BusType: STORAGE_BUS_TYPE;
-    RawPropertiesLength: ULONG;
-    RawDeviceProperties: array[0..511] of byte;
-  end;
-
-  //Type definition for device query
-  STORAGE_PROPERTY_QUERY = packed record
-    PropertyId: DWORD;
-    QueryType: DWORD;
-    AdditionalParameters: PByte;
-  end;
-
-  {
-    ****UNUSED SECTION
-    Reserved for potential future use
-
-  //Type definition for getting physical drive number
-  TDiskExtent = record
-    DiskNumber: DWORD;
-    StartingOffset: LARGE_INTEGER;
-    ExtentLength: LARGE_INTEGER;
-  end;
-  PDiskExtent = ^TDiskExtent;
-
-  //Type definition for getting physical drive number
-  TVolumeDiskExtents = record
-    NumberOfDiskExtents: DWORD;
-    Extents: array[0..1] of TDiskExtent;
-  end;
-  PVolumeDiskExtents = ^TVolumeDiskExtents;
-
-  //Drive Length information
-  GET_LENGTH_INFORMATION = record
-    Length: integer;
-  end;
-  }
-
-  //info about serial number
-  MEDIA_SERIAL_NUMBER_DATA= packed record
-    SerialNumberLength:Cardinal;
-    Result:Cardinal;
-    AuthCommand:Cardinal;
-    Reserved:Cardinal;
-    SerialNumberData:Byte;
-   end;
 
 {
   Class constructor
@@ -135,7 +80,7 @@ type
 var
   DeviceDescriptor: STORAGE_DEVICE_DESCRIPTOR; {system device descriptor}
   PropQuery: STORAGE_PROPERTY_QUERY; {property query}
-  //DiskExtent: TVolumeDiskExtents; {disk extent variable}
+  DiskExtent: TVolumeDiskExtents; {disk extent variable}
   //LengthInfo: GET_LENGTH_INFORMATION; {length information}
   ReturnedBytes: DWORD; {buffer for returned bytes}
   Success: LongBool; {indicates if a function call was successful}
@@ -153,7 +98,7 @@ begin
       FILE_SHARE_WRITE,nil,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,0);
     if fHandle = INVALID_HANDLE_VALUE {invalid handle}
     then begin
-      raise EDeviceException.Create('Invalid volume handle!'); {opening failed}
+      raise EDeviceException.Create(SysErrorMessage(GetLastError)); {opening failed}
     end {exception - invalid file}
     else begin
       {there we get volume size}
@@ -169,14 +114,14 @@ begin
         ReturnedBytes, nil);
       if not Success
       then begin
-        raise EDeviceException.Create('Device does not exist!'); //DeviceIOControl
+        raise EDeviceException.Create(SysErrorMessage(GetLastError)); //DeviceIOControl
       end {exception - no such device}                           //failed
       else begin
         if success then
         if (DeviceDescriptor.BusType = BusTypeUnknown) or
           (DeviceDescriptor.BusType = BusTypeMaxReserved)
         then begin
-          raise EDeviceException.Create('Unknown bus type!'); //unknown bus type
+          raise EDeviceException.Create(SysErrorMessage(GetLastError)); //unknown bus type
         end {unknown bus type}
         else begin
           {Converting bus type to TBusType}
@@ -186,43 +131,43 @@ begin
             @fVolumeID,ReturnedBytes,FSFlags,FileSystemNameBuffer,MAXCHAR);
           if not Success
           then begin
-            raise EDeviceException.Create('Unknown volume!');
+            raise EDeviceException.Create(SysErrorMessage(GetLastError));
           end {cannot get volume info}
           else begin
             {setting volume label and FS type}
             fVolumeLabel := PChar(@VolumeNameBuf);
             fFileSystemType := PChar(@FileSystemNameBuffer);
-
-            {
-              UNUSED SECTION: maybe used in the next releases
-
-              //we get the number of drive in system
-              ZeroMemory(@DiskExtent,sizeof(DiskExtent));
-              Success := DeviceIoControl(fHandle,IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS,
-                nil,0,@DiskExtent,sizeof(DiskExtent),ReturnedBytes,
-                nil);
-            }
-
-            {getting disk size}
-            fSize := DiskSize(ord(fPath[0])-ord(FLOPPY_DRIVE_1)+1);
-            {Getting vendor ID}
-            if DeviceDescriptor.VendorIdOffset <> 0
+            //we get the number of drive in system
+            ZeroMemory(@DiskExtent,sizeof(DiskExtent));
+            Success := DeviceIoControl(fHandle,IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS,
+              nil,0,@DiskExtent,sizeof(DiskExtent),ReturnedBytes,
+              nil);
+            if not Success
             then begin
-              buf := @PCharArray(@DeviceDescriptor)^[DeviceDescriptor.VendorIdOffset];
-              fVendorID := PChar(Trim(buf));
-            end;
-            {Getting product revision}
-            if DeviceDescriptor.ProductRevisionOffset <> 0
-            then begin
-              buf := @PCharArray(@DeviceDescriptor)^[DeviceDescriptor.ProductRevisionOffset];
-              fProductRevision := PChar(Trim(buf));
-            end;
-            {Getting product ID}
-            if DeviceDescriptor.ProductIdOffset <> 0
-            then begin
-              buf := @PCharArray(@DeviceDescriptor)^[DeviceDescriptor.ProductIdOffset];
-              fProductID := PChar(Trim(buf));
-            end;
+              raise EDeviceException.Create(SysErrorMessage(GetLastError));
+            end
+            else begin
+              {getting disk size}
+              fSize := DiskSize(ord(fPath[0])-ord(FLOPPY_DRIVE_1)+1);
+              {Getting vendor ID}
+              if DeviceDescriptor.VendorIdOffset <> 0
+              then begin
+                buf := @PCharArray(@DeviceDescriptor)^[DeviceDescriptor.VendorIdOffset];
+                fVendorID := PChar(Trim(buf));
+              end;
+              {Getting product revision}
+              if DeviceDescriptor.ProductRevisionOffset <> 0
+              then begin
+                buf := @PCharArray(@DeviceDescriptor)^[DeviceDescriptor.ProductRevisionOffset];
+                fProductRevision := PChar(Trim(buf));
+              end;
+              {Getting product ID}
+              if DeviceDescriptor.ProductIdOffset <> 0
+              then begin
+                buf := @PCharArray(@DeviceDescriptor)^[DeviceDescriptor.ProductIdOffset];
+                fProductID := PChar(Trim(buf));
+              end;
+            end; {got drive number}
           end; {got volume info}
         end; {bus inited successfully}
       end; {success - device found}
@@ -230,7 +175,6 @@ begin
   finally
     if fHandle <> INVALID_HANDLE_VALUE
     then begin
-      CloseHandle(fHandle); {we release resources}
       ZeroMemory(@PropQuery, sizeof(PropQuery));
       ZeroMemory(@DeviceDescriptor, sizeof(DeviceDescriptor));
     end; {close handle}
@@ -295,6 +239,12 @@ begin
   Result := fVolumeID;
 end;
 
+function TDevice.GetDriveNumber: Integer;
+begin
+  Result := fNumber;
+end;
+
+
 //Converts integer codes to TBusType enumeration
 class function TDevice.StorageBusTypeToTBusType(sBusType: STORAGE_BUS_TYPE): TBusType;
 begin
@@ -313,7 +263,5 @@ begin
     BusTypeSata: Result := btSATA;
   end;
 end;
-
-
 
 end.

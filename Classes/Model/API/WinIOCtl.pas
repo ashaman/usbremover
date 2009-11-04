@@ -6,6 +6,9 @@ unit WinIOCtl;
 
 interface
 
+uses
+  Windows, SysUtils;
+
 {
   STORAGE_BUS_TYPE
   Minimum supported client:	Windows XP
@@ -100,6 +103,62 @@ const
   FSCTL_LOCK_VOLUME = (FILE_DEVICE_FILE_SYSTEM shl 16) or (6 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
   FSCTL_UNLOCK_VOLUME = (FILE_DEVICE_FILE_SYSTEM shl 16) or (7 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
   FSCTL_DISMOUNT_VOLUME = (FILE_DEVICE_FILE_SYSTEM shl 16) or (8 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+
+type
+  //type definition for device descriptor
+  STORAGE_DEVICE_DESCRIPTOR = packed record
+    Version: ULONG;
+    Size: ULONG;
+    DeviceType: UCHAR;
+    DeviceTypeModifier: UCHAR;
+    RemovableMedia: boolean;
+    CommandQueueing: boolean;
+    VendorIdOffset: ULONG;
+    ProductIdOffset: ULONG;
+    ProductRevisionOffset: ULONG;
+    SerialNumberOffset: ULONG;
+    BusType: STORAGE_BUS_TYPE;
+    RawPropertiesLength: ULONG;
+    RawDeviceProperties: array[0..511] of byte;
+  end;
+
+  //Type definition for device query
+  STORAGE_PROPERTY_QUERY = packed record
+    PropertyId: DWORD;
+    QueryType: DWORD;
+    AdditionalParameters: PByte;
+  end;
+
+  //Type definition for getting physical drive number
+  TDiskExtent = record
+    DiskNumber: DWORD;
+    StartingOffset: LARGE_INTEGER;
+    ExtentLength: LARGE_INTEGER;
+  end;
+
+  //Type definition for getting physical drive number
+  TVolumeDiskExtents = record
+    NumberOfDiskExtents: DWORD;
+    Extents: array[0..1] of TDiskExtent;
+  end;
+
+  //Drive Length information
+  GET_LENGTH_INFORMATION = record
+    Length: integer;
+  end;
+
+  //info about serial number
+  MEDIA_SERIAL_NUMBER_DATA= packed record
+    SerialNumberLength:Cardinal;
+    Result:Cardinal;
+    AuthCommand:Cardinal;
+    Reserved:Cardinal;
+    SerialNumberData:Byte;
+   end;
+
+  PREVENT_MEDIA_REMOVAL  = record
+    PreventMediaRemoval : ByteBool;
+  end;
 
 implementation
 end.
