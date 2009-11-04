@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, USBManager;
+  Dialogs, USBManager, OleCtrls, NSENTRYLib_TLB;
 
 type
   TMainFrm = class(TForm)
@@ -26,7 +26,7 @@ procedure TMainFrm.FormCreate(Sender: TObject);
 var
   rm: TUSBManager;
 begin
-//  rm := TUSBManager.GetManager;
+  rm := TUSBManager.GetManager;
 end;
 
 end.

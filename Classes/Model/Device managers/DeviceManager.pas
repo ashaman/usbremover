@@ -61,6 +61,7 @@ var
   driveNumber: integer; //number of drives
   sizeOfChar: integer; {size of 1 character in bytes:
                        (ANSI - 1 byte, Unicode - 2 bytes)}
+  startIndex: integer; {start index for string search}
 begin
   //here we get size needed for buffer
   bufSize := GetLogicalDriveStrings(0,nil);
@@ -71,11 +72,16 @@ begin
     GetLogicalDriveStrings(bufSize,drives);
     sizeOfChar := sizeof(drives[0]);
     driveNumber := (bufSize-1) div charCount; //we count the quantity of drives
-    for i := 0 to driveNumber-1 do
+    {!!! VERY BAD!!!}
+    startIndex := 1;
+    drives := drives + charCount*sizeOfChar;
+    {skip floppy drive!!!}
+
+    for i := startIndex to driveNumber-1 do
     begin
       if FilterDevices(drives)
       then begin
-        fDevices.Add(TDevice.Create(drives));
+        fDevices.Add(TDevice.Create(drives,i));
       end; {filter}
       drives := drives + charCount*sizeOfChar;  //move to the next list item
     end; {drives}
@@ -90,6 +96,7 @@ end; {GetDrives}
 constructor TDeviceManager.Create(deviceType: integer);
 begin
   inherited Create;
+  //create two lists: event listeners and devices
   fEventHandlers := TList.Create;
   fDevices := TList.Create;
   self.fDeviceType := deviceType;
