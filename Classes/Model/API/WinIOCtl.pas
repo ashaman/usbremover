@@ -14,16 +14,19 @@ uses
 const
   DeviceMask = '%s:';
   VolumeMask = '\\.\' + DeviceMask;
+  DrivePattern = '\\.\PhysicalDrive';
+  DEV_FLOPPY = '\Device\Floppy';
+  FLOPPY_DRIVE_1 = 'A';
+  FLOPPY_DRIVE_2 = 'B';
 
-  setupapi = 'SetupApi.dll';
-  cfgmgr = 'cfgmgr32.dll';
-
+type
+  TCharArray = array [0..MAX_PATH] of char;
+  PCharArray = ^TCharArray;
 {
   STRUCTURES AND CONSTANTS FROM WINIOCTL.H
   Partially translated by J.L.Blackrow (e-mail: DarthYarius_0990@mail.ru)
-  Partially translated by Alexander Bagel (
-  //* Copyright : © Fangorn Wizards Lab 1998 - 2009.
-  //* Home Page : http://rouse.drkb.ru
+  Partially translated by Alexander Bagel
+  Copyright : © Fangorn Wizards Lab 1998 - 2009.
 }
 
 const
@@ -88,8 +91,10 @@ const
   IOCTL_STORAGE_READ_CAPACITY = (IOCTL_STORAGE_BASE shl 16) or ($0450 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
   IOCTL_STORAGE_QUERY_PROPERTY = $2D1400;
 
-  GUID_DEVINTERFACE_DISK: TGUID = (
-    D1:$53f56307; D2:$b6bf; D3:$11d0; D4:($94, $f2, $00, $a0, $c9, $1e, $fb, $8b));
+  {
+  GUID_DEVINTERFACE_DISK: TGUID =
+    (D1:$53f56307; D2:$b6bf; D3:$11d0; D4:($94, $f2, $00, $a0, $c9, $1e, $fb, $8b));
+    }
 
 type
   DEVICE_TYPE = DWORD;
@@ -119,113 +124,9 @@ type
 
 
 {
-  STRUCTURES, CONSTANTS AND FUNCTIONS FROM SETUPAPI.H
-  Partially translated by Alexander Bagel (
-  //* Copyright : © Fangorn Wizards Lab 1998 - 2009.
-  //* Home Page : http://rouse.drkb.ru
-}
-
-const
-  ANYSIZE_ARRAY = 1024;
-  DIGCF_PRESENT         = $00000002;
-  DIGCF_DEVICEINTERFACE = $00000010;
-
-type
-  HDEVINFO = THandle;
-
-  PSPDevInfoData = ^TSPDevInfoData;
-  SP_DEVINFO_DATA = packed record
-    cbSize: DWORD;
-    ClassGuid: TGUID;
-    DevInst: DWORD; // DEVINST handle
-    Reserved: PULONG;
-  end;
-
-  TSPDevInfoData = SP_DEVINFO_DATA;
-
-  PSPDeviceInterfaceData = ^TSPDeviceInterfaceData;
-  SP_DEVICE_INTERFACE_DATA = packed record
-    cbSize: DWORD;
-    InterfaceClassGuid: TGUID;
-    Flags: DWORD;
-    Reserved: PULONG;
-  end;
-
-  TSPDeviceInterfaceData = SP_DEVICE_INTERFACE_DATA;
-
-  PSPDeviceInterfaceDetailDataA = ^TSPDeviceInterfaceDetailDataA;
-  PSPDeviceInterfaceDetailData = PSPDeviceInterfaceDetailDataA;
-  SP_DEVICE_INTERFACE_DETAIL_DATA_A = packed record
-    cbSize: DWORD;
-    DevicePath: array [0..ANYSIZE_ARRAY - 1] of AnsiChar;
-  end;
-  TSPDeviceInterfaceDetailDataA = SP_DEVICE_INTERFACE_DETAIL_DATA_A;
-  TSPDeviceInterfaceDetailData = TSPDeviceInterfaceDetailDataA;
-
-  function SetupDiGetClassDevsA(ClassGuid: PGUID; const Enumerator: PAnsiChar;
-    hwndParent: HWND; Flags: DWORD): HDEVINFO; stdcall; external setupapi;
-
-  function SetupDiDestroyDeviceInfoList(
-    DeviceInfoSet: HDEVINFO): LongBool; stdcall; external setupapi;
-
-  function SetupDiEnumDeviceInterfaces(DeviceInfoSet: HDEVINFO;
-    DeviceInfoData: PSPDevInfoData; const InterfaceClassGuid: TGUID;
-    MemberIndex: DWORD; var DeviceInterfaceData: TSPDeviceInterfaceData):
-    LongBool; stdcall; external setupapi;
-
-  function SetupDiGetDeviceInterfaceDetailA(DeviceInfoSet: HDEVINFO;
-    DeviceInterfaceData: PSPDeviceInterfaceData;
-    DeviceInterfaceDetailData: PSPDeviceInterfaceDetailDataA;
-    DeviceInterfaceDetailDataSize: DWORD; var RequiredSize: DWORD;
-    Device: PSPDevInfoData): LongBool; stdcall; external setupapi;
-
-
-{
-  CONSTANTS AND TYPES FROM CFGMGR32.H
-  Partially translated by Alexander Bagel (
-  //* Copyright : © Fangorn Wizards Lab 1998 - 2009.
-  //* Home Page : http://rouse.drkb.ru
-}
-
-const
-  CR_SUCCESS = 0;
-
-  PNP_VetoTypeUnknown          = 0;
-  PNP_VetoLegacyDevice         = 1;
-  PNP_VetoPendingClose         = 2;
-  PNP_VetoWindowsApp           = 3;
-  PNP_VetoWindowsService       = 4;
-  PNP_VetoOutstandingOpen      = 5;
-  PNP_VetoDevice               = 6;
-  PNP_VetoDriver               = 7;
-  PNP_VetoIllegalDeviceRequest = 8;
-  PNP_VetoInsufficientPower    = 9;
-  PNP_VetoNonDisableable       = 10;
-  PNP_VetoLegacyDriver         = 11;  
-  PNP_VetoInsufficientRights   = 12;
-
-type
-  DEVINST = DWORD;
-  CONFIGRET = DWORD;
-
-  PPNP_VETO_TYPE = ^PNP_VETO_TYPE;
-  PNP_VETO_TYPE = DWORD;
-
-  function CM_Get_Parent(var dnDevInstParent: DEVINST;
-    dnDevInst: DEVINST; ulFlags: ULONG): CONFIGRET; stdcall;
-    external cfgmgr;
-
-  function CM_Request_Device_EjectA(dnDevInst: DEVINST;
-    pVetoType: PPNP_VETO_TYPE; pszVetoName: PWideChar;
-    ulNameLength: ULONG; ulFlags: ULONG): CONFIGRET; stdcall;
-    external setupapi;
-
-{
   CONSTANTS AND TYPES FROM NTDDSCSI.H
-  Partially translated by Alexander Bagel (
-  //* Copyright : © Fangorn Wizards Lab 1998 - 2009.
-  //* Home Page : http://rouse.drkb.ru
-
+  Partially translated by Alexander Bagel
+  Copyright : © Fangorn Wizards Lab 1998 - 2009.
 }
 const
   SCSI_IOCTL_DATA_IN = 1;
@@ -261,7 +162,7 @@ type
 
 {
   PARTIAL TRANSLATION OF OTHER MS SDK HEADERS
-  Partially translated by J.L.Blackrow (e-mail: DarthYarius_0990@mail.ru)
+  Partially translated by J.L.Blackrow (by me :))
 }
 const
   IOCTL_VOLUME_LOGICAL_TO_PHYSICAL = $560020;
@@ -344,32 +245,16 @@ type
 
   //info about serial number
   MEDIA_SERIAL_NUMBER_DATA= packed record
-    SerialNumberLength:Cardinal;
+    SerialNumberLength: Cardinal;
     Result:Cardinal;
     AuthCommand:Cardinal;
     Reserved:Cardinal;
-    SerialNumberData:Byte;
+    SerialNumberData: array [0..MAX_PATH] of char;
    end;
 
+   //This structure prevents media removal
   PREVENT_MEDIA_REMOVAL  = record
     PreventMediaRemoval : ByteBool;
-  end;
-
-  //Token from DBT.h
-  DEV_BROADCAST_HDR     = ^PDEV_BROADCAST_HDR;
-  PDEV_BROADCAST_HDR  = packed record
-    dbch_size         : DWORD;
-    dbch_devicetype   : DWORD;
-    dbch_reserved     : DWORD;
-  end;
-
-  DEV_BROADCAST_VOLUME    = ^PDEV_BROADCAST_VOLUME;
-  PDEV_BROADCAST_VOLUME = packed record
-    dbcv_size           : DWORD;
-    dbcv_devicetype     : DWORD;
-    dbcv_reserved       : DWORD;
-    dbcv_unitmask       : DWORD;
-    dbcv_flags          : WORD;
   end;
 
 implementation

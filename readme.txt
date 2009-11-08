@@ -13,4 +13,15 @@ I found a very interesting article for processes and files management. The only 
 
 0:35 05.11.2009
 Some difficulties occured with getting size and serial number of flash drive. I hope I'll solve 'em in one-two hours tomorrow.
-And next, the mein problem is to notify all running Windoes applications that the flash drive was ejected
+And next, the main problem is to notify all running Windows applications that the flash drive was ejected
+
+20:12 08.12.2009
+I found WMI libraries in Delphi 7. To add them, it's necessary to do the following things
+	1) install MS SDK 5.0 or higher
+	2) import type libraries
+		a) Active DS Type Library
+		b) Microsoft WMI Scripting (v. 1.2) library
+So, now I'll try to use them in my program
+
+11:37 09.12.2009
+It is necessary to create Volume class...

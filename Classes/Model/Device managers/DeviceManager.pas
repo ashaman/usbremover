@@ -67,12 +67,12 @@ begin
     GetLogicalDriveStrings(bufSize,drives);
     sizeOfChar := sizeof(drives[0]);
     driveNumber := (bufSize-1) div charCount; //we count the quantity of drives
-    for i := 1 to driveNumber-1 do
+    for i := 1 to driveNumber do
     begin
-      {if FilterDevices(drives)
-      then begin}
-        fDevices.Add(TDevice.Create(drives+charCount,i));
-      //end; {filter}
+      if FilterDevices(drives)
+      then begin
+        fDevices.Add(TDevice.Create(drives));
+      end; {filter}
       drives := drives + charCount*sizeOfChar;  //move to the next list item
     end; {drives}
     FreeMem(pDrives,bufSize); //we release resources
@@ -192,19 +192,6 @@ end;
 
 procedure TDeviceManager.ProcessMessages(var msg: TMessage);
 begin
-  case msg.WParam of
-    DBT_DEVICEREMOVECOMPLETE:;
-    DBT_DEVICEQUERYREMOVE:;
-    DBT_DEVICEREMOVEPENDING:;
-    DBT_DEVICEARRIVAL:
-      if DEV_BROADCAST_HDR(msg.LParam)^.dbch_devicetype = fDeviceType
-      then begin
-        if DEV_BROADCAST_VOLUME(msg.LParam)^.dbcv_flags = 0
-        then begin
-          fDevices.Add(TDevice.Create('',fDevices.Count+1));
-        end;
-      end;
-  end;
 end;
 
 

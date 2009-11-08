@@ -28,17 +28,15 @@ type
 implementation
 
 uses
-  SysUtils, ShlObj, ShellAPI;
+  SysUtils, WMI, ShlObj;
 
 var
   Instance: TUSBManager;
 
 //Filters only necessary devices which match the type criteria
 function TUSBManager.FilterDevices(drivePath: PChar): boolean;
-const
-  DEV_FLOPPY = '\Device\Floppy';
 var
-  bufChar: array [0..MAXCHAR-1] of char;
+  bufChar: TCharArray;
 begin
   Result := false;
   //we check if this drive is removable
@@ -61,12 +59,11 @@ begin
   end;
 end;
 }
-    {checking if the device is a floppy drive}
     QueryDosDevice(PChar(Copy(drivePath,1,2)),@bufChar[0],MAXCHAR);
     {checking if the device is a floppy drive}
     if (Copy(bufChar,1,14) <> DEV_FLOPPY)
     then begin
-      {check if this device is a card reader}
+      {TODO: check if this device is a card reader}
       Result := true;
     end;
   end;
@@ -104,13 +101,68 @@ begin
   end; {no device}
 end;
 
+{
+  It works absolutely similar to previous WinAPI realization.
+}
+procedure TUSBManager.RemoveDrive(device: TDevice);
+var
+  i: integer;
+  DeviceInfo: SP_DEVINFO_DATA;
+  DrivesPnpHandle: HDEVINFO;
+  Parent: DWORD;
+  VetoName: array[0..MAX_PATH] of char;
+begin
+  DeviceInfo.cbSize := sizeof(SP_DEVINFO_DATA);
+  DrivesPnpHandle := SetupDiGetClassDevsA(@GUID_DEVCLASS_DISKDRIVE, nil,
+    HWND(nil), DIGCF_PRESENT);
+  try
+    if DrivesPnpHandle = INVALID_HANDLE_VALUE
+    then begin
+      raise EDeviceException.Create(SysErrorMessage(GetLastError));
+    end //invalid handle
+    else begin
+      if not SetupDiEnumDeviceInfo(DrivesPnpHandle,1,DeviceInfo)
+      then begin
+        raise EDeviceException.Create(SysErrorMessage(GetLastError));
+      end //end error SetupDiEnum...
+      else begin
+        if CM_Get_Parent(Parent, DeviceInfo.DevInst, 0) = CR_SUCCESS
+        then begin
+          for i := 0 to MAX_ATTEMPTS-3 do
+          begin
+            CM_Request_Device_EjectA(Parent,nil,@VetoName,MAX_PATH,0);
+            if VetoName = ''
+            then begin
+              {ÂÎÎÎÎÒ! ÂÎÒ ÝÒÎ ÒÐÓÚÚÚÚ!!!!}
+              {TODO: Refactor this code and add BlockedFiles search
+                    Check if there's any possibility to switch on
+                    disconnected device}
+
+              //SHChangeNotify(SHCNE_MEDIAREMOVED,SHCNF_PATH,device.Path,nil);
+            end
+            else begin
+            end;
+          end; //end loop
+        end; //end CM_GET_PARENT
+      end; //end SetupDiEnum...
+    end; //valid handle
+  finally
+    SetupDiDestroyDeviceInfoList(DrivesPnpHandle);
+  end;
+end;
+
+{
+  WARINING: OLD VERSION. DOES NOT INFORM WINDOWS PROPERLY
+
+  !!!uses ShlObj, ShellAPI
+
 //Main method for drive removal
 procedure TUSBManager.RemoveDrive(device: TDevice);
 var
-  Success: LongBool; {boolean flag}
-  i: integer; {counter}
-  ReturnedBytes: DWORD; {fake value}
-  PreventFlag: PREVENT_MEDIA_REMOVAL; {prevents media removal}
+  Success: LongBool;
+  i: integer;
+  ReturnedBytes: DWORD;
+  PreventFlag: PREVENT_MEDIA_REMOVAL;
   fHandle: THandle;
 begin
   for i := 0 to MAX_ATTEMPTS-1 do
@@ -123,41 +175,44 @@ begin
       if i = MAX_ATTEMPTS-1
       then begin
         raise EDeviceException.Create(SysErrorMessage(GetLastError)); //access
-      end {no more attempts left}                                     //denied!
+      end //no more attempts left                                    //denied!
       else begin
         Sleep(2000);
         continue;
-      end; {skip the iteration}
-    end {not successful}
+      end; //skip the iteration
+    end //not successful
     else begin
-      {clear the memory}
+      //clear the memory
       ZeroMemory(@PreventFlag, sizeof(PreventFlag));
-      {we dismount the volume...}
+      //we dismount the volume...
       DeviceIoControl(fHandle,FSCTL_DISMOUNT_VOLUME, nil, 0, nil, 0,
         ReturnedBytes, nil);
-      {then, we enable volume ejection mechanism...}
+      //then, we enable volume ejection mechanism...
       DeviceIoControl(fHandle,IOCTL_STORAGE_MEDIA_REMOVAL,@PreventFlag,
         sizeof(PreventFlag),nil,0,ReturnedBytes,nil);
-      {after, we eject the volume...}
+      //after, we eject the volume...
       DeviceIoControl(fHandle,IOCTL_STORAGE_EJECT_MEDIA, nil, 0, nil, 0,
         ReturnedBytes,nil);
-      {...and finally we release the device}
+      //...and finally we release the device
       DeviceIoControl(fHandle,FSCTL_UNLOCK_VOLUME,nil,0,nil,0,
         ReturnedBytes,nil);
-      {...notify system about device removal..}
+      //...notify system about device removal..
       SHChangeNotify(SHCNE_MEDIAREMOVED,SHCNF_PATH,device.Path,nil);
-      {and release all resources}
+      //and release all resources
       device.Destroy;
       fDevices.Pack;
       break;
-    end; {successful}
+    end; //successful
   end;
 end;
+}
 
 //This method makes force drive removal
 procedure TUSBManager.ForcedRemoveDrive;
 begin
 end;
+
+{Find out if it is possible to return disconnected device}
 
 class function TUSBManager.GetManager: TUSBManager;
 begin
