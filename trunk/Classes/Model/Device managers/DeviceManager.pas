@@ -13,6 +13,7 @@ type
   private
     fDeviceType: UINT;
     fEventHandlers: TList;
+    //gets all drives
     procedure GetDrives;
   protected
     fDevices: TList;
@@ -22,19 +23,16 @@ type
     procedure ProcessMessages(var msg: TMessage); message WM_DeviceChange;
   public
     destructor Destroy; override;
-
     //These functions depend on device type
     procedure RemoveDrive(index: integer); overload; virtual; abstract;
     procedure RemoveDrive(device: TDevice); overload; virtual; abstract;
     procedure ForcedRemoveDrive(index: integer); virtual; abstract;
-
     //These funtions are common for all devices
     function GetBlockedFiles: TStrings;
     function GetBlockerID: HWND;
     function GetDeviceInfo(handle: THandle): TDevice; overload;
     function GetDeviceInfo(name: PChar): TDevice; overload;
     function GetDeviceCount: integer;
-
     //These functions add event handlers from listeners
     procedure AddHandler(Handler: TNotifyEvent);
     procedure RemoveHandler(Handler: TNotifyEvent);
@@ -63,7 +61,7 @@ begin
   if bufSize<>0
   then begin {everything is OK}
     drives := AllocMem(bufSize); //we alloc memory
-    pDrives := drives; //save pointer to the beginning odf the array
+    pDrives := drives; //save pointer to the beginning of the array
     GetLogicalDriveStrings(bufSize,drives);
     sizeOfChar := sizeof(drives[0]);
     driveNumber := (bufSize-1) div charCount; //we count the quantity of drives
@@ -71,7 +69,7 @@ begin
     begin
       if FilterDevices(drives)
       then begin
-        fDevices.Add(TDevice.Create(drives));
+        fDevices.Add(TDevice.Create(drives))
       end; {filter}
       drives := drives + charCount*sizeOfChar;  //move to the next list item
     end; {drives}
@@ -125,6 +123,10 @@ function TDeviceManager.GetDeviceCount: integer;
 begin
   Result := fDevices.Count;
 end;
+
+{
+  IT DOES NOT WORD PROPERLY!!!
+}
 
 //This function searches the device by its handle
 //If such a device does not exist, this function throws EDeviceException

@@ -14,7 +14,7 @@ uses
 const
   DeviceMask = '%s:';
   VolumeMask = '\\.\' + DeviceMask;
-  DrivePattern = '\\.\PhysicalDrive';
+  DrivePattern = '\\\\.\\PhysicalDrive%d';
   DEV_FLOPPY = '\Device\Floppy';
   FLOPPY_DRIVE_1 = 'A';
   FLOPPY_DRIVE_2 = 'B';
