@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, USBManager, OleCtrls, NSENTRYLib_TLB;
+  Dialogs, USBManager;
 
 type
   TMainFrm = class(TForm)

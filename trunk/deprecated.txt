@@ -1,0 +1,101 @@
+{Gets device description from STORAGE_DEVICE_DESCRIPTOR structure}
+procedure TDevice.GetAPIDeviceDescription(fHandle: THandle);
+var
+  DeviceDescriptor: STORAGE_DEVICE_DESCRIPTOR; {system device descriptor}
+  ReturnedBytes: DWORD; {buffer for returned bytes}
+  PropQuery: STORAGE_PROPERTY_QUERY; {property query}
+  Success: LongBool; {indicates if a function call was successful}
+  //hDev: THandle; {}
+  DskSize: GET_LENGTH_INFORMATION;
+begin
+    //zero memofy for pointers
+    ZeroMemory(@PropQuery, sizeof(PropQuery));
+    ZeroMemory(@DeviceDescriptor, sizeof(DeviceDescriptor));
+    //getting size of structure
+    DeviceDescriptor.Size := sizeof(DeviceDescriptor);
+    //we call DeviceIOControl to get info about the device
+    //Returned bytes has no meaning in this case
+    Success := DeviceIoControl(fHandle,IOCTL_STORAGE_QUERY_PROPERTY,@PropQuery,
+      sizeof(PropQuery), @DeviceDescriptor, DeviceDescriptor.Size,
+      ReturnedBytes, nil);
+    if not Success
+    then begin
+      raise EDeviceException.Create(SysErrorMessage(GetLastError));
+    end {exception - no such device}
+    else begin
+      if (DeviceDescriptor.BusType = BusTypeUnknown) or
+        (DeviceDescriptor.BusType = BusTypeMaxReserved)
+      then begin
+        raise EDeviceException.Create(SysErrorMessage(GetLastError)); //unknown bus type
+      end {unknown bus type}
+      else begin
+        {Converting bus type to TBusType}
+        fDeviceBusType := TDevice.StorageBusTypeToTBusType(DeviceDescriptor.BusType);
+        {Getting vendor ID
+        fVendorID := self.APICharArrayToPChar(DeviceDescriptor,
+          DeviceDescriptor.VendorIdOffset);}
+        {Getting product revision
+        fProductRevision := self.APICharArrayToPChar(DeviceDescriptor,
+          DeviceDescriptor.ProductRevisionOffset);}
+        {Getting product ID
+        fProductID := self.APICharArrayToPChar(DeviceDescriptor,
+          DeviceDescriptor.ProductIdOffset);}
+      end;
+    end;
+    ZeroMemory(@PropQuery, sizeof(PropQuery));
+    ZeroMemory(@DeviceDescriptor, sizeof(DeviceDescriptor));
+end;
+
+
+
+
+//This function gets device serial number
+function TDevice.GetAPISerialNumber(devNumber: Cardinal): PChar;
+var
+  devHandle: THandle; //device handle
+  diskSerialData: MEDIA_SERIAL_NUMBER_DATA; //structure for disk serial data
+  Success: LongBool; //boolean flag
+  ReturnedBytes: Cardinal; //bytes returned by DeviceIoControl
+begin
+  Result := '';
+  //we open device as file
+  devHandle := CreateFile(PChar(DrivePattern+IntToStr(devNumber)),
+    0, FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  try
+    if devHandle = INVALID_HANDLE_VALUE
+    then begin
+      raise EDeviceException.Create(SysErrorMessage(GetLastError));
+    end //opening failed
+    else begin
+      //here we try to get device serial number
+      Success := DeviceIoControl(devHandle,IOCTL_STORAGE_GET_MEDIA_SERIAL_NUMBER,
+        nil, 0, @diskSerialData, sizeof(diskSerialData), ReturnedBytes, nil);
+      if not Success
+      then begin
+        raise EDeviceException.Create(SysErrorMessage(GetLastError));
+      end //function invoke failed
+      else begin
+        Result := PChar(@diskSerialData.SerialNumberData);
+      end; //successfully invoked
+    end; //opening succeeded
+  finally
+    try
+      CloseHandle(devHandle);
+    except //handle already closed
+    end; //exception supression
+  end; //finally
+end;
+
+{Converts char arrays to PChar}
+function TDevice.APICharArrayToPChar(DeviceDescriptor: STORAGE_DEVICE_DESCRIPTOR;
+  offset: Cardinal): PChar;
+var
+  buf: PChar; {string for buffer}
+begin
+  Result := '';
+  if offset <> 0
+  then begin
+    buf := @PCharArray(@DeviceDescriptor)^[offset];
+    Result := PChar(Trim(buf));
+  end;
+end;

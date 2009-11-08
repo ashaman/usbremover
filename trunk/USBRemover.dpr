@@ -13,7 +13,10 @@ uses
   Device in 'Classes\Model\Device classes\Device.pas',
   DeviceManager in 'Classes\Model\Device managers\DeviceManager.pas',
   WinIOCtl in 'Classes\Model\API\WinIOCtl.pas',
-  DeviceException in 'Classes\Model\Exceptions\DeviceException.pas';
+  DeviceException in 'Classes\Model\Exceptions\DeviceException.pas',
+  WMI in 'Classes\Model\API\WMI.pas',
+  Volume in 'Classes\Model\Device classes\Volume.pas',
+  Win32_DiskDrive in 'Classes\Model\Device classes\Win32_DiskDrive.pas';
 
 {$R *.res}
 begin
