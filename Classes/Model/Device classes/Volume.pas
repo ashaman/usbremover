@@ -58,6 +58,7 @@ begin
     //setting volume label and FS type
     fVolumeLabel := PChar(@VolumeNameBuf);
     fVolumeFileSystemType := PChar(@FileSystemNameBuf);
+    fVolumeSize := DiskSize(ord(fVolumeRootDirectory[0])-ord(FLOPPY_DRIVE_1)+1);
   end;
 end;
 
@@ -65,9 +66,8 @@ end;
 constructor TVolume.Create(volumeRoot: PChar);
 begin
   inherited Create;
-  fVolumeID := 0;
-  fVolumeSize := 0;
   fVolumeRootDirectory := volumeRoot;
+  GetVolumeInfo;
 end;
 
 //Destructor
@@ -81,19 +81,11 @@ end;
 }
 function TVolume.GetVolumeLabel: PChar;
 begin
-  if not Assigned(fVolumeLabel)
-  then begin
-    GetVolumeInfo;
-  end;
   Result := fVolumeLabel;
 end;
 
 function TVolume.GetVolumeID: Cardinal;
 begin
-  if fVolumeID = 0
-  then begin
-    GetVolumeInfo;
-  end;
   Result := fVolumeID;
 end;
 
@@ -104,19 +96,11 @@ end;
 
 function TVolume.GetVolumeSize: Int64;
 begin
-  if fVolumeSize = 0
-  then begin
-    fVolumeSize := DiskSize(ord(fVolumeRootDirectory[0])-ord(FLOPPY_DRIVE_1)+1);
-  end; //we get the volume size
   Result := fVolumeSize;
 end;
 
 function TVolume.GetVolumeFileSystemType: PChar;
 begin
-  if not Assigned(fVolumeFileSystemType)
-  then begin
-    GetVolumeInfo;
-  end;
   Result := fVolumeFileSystemType;
 end;
 

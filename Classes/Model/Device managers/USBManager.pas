@@ -110,7 +110,7 @@ var
   DeviceInfo: SP_DEVINFO_DATA;
   DrivesPnpHandle: HDEVINFO;
   Parent: DWORD;
-  VetoName: array[0..MAX_PATH] of char;
+  VetoName: TCharArray;
 begin
   DeviceInfo.cbSize := sizeof(SP_DEVINFO_DATA);
   DrivesPnpHandle := SetupDiGetClassDevsA(@GUID_DEVCLASS_DISKDRIVE, nil,
@@ -121,7 +121,8 @@ begin
       raise EDeviceException.Create(SysErrorMessage(GetLastError));
     end //invalid handle
     else begin
-      if not SetupDiEnumDeviceInfo(DrivesPnpHandle,1,DeviceInfo)
+      //works improperly too
+      if not SetupDiEnumDeviceInfo(DrivesPnpHandle,device.DeviceNumber,DeviceInfo)
       then begin
         raise EDeviceException.Create(SysErrorMessage(GetLastError));
       end //end error SetupDiEnum...

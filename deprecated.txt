@@ -99,3 +99,25 @@ begin
     Result := PChar(Trim(buf));
   end;
 end;
+
+
+//Converts integer codes to TBusType enumeration
+class function TDevice.StorageBusTypeToTBusType(sBusType: STORAGE_BUS_TYPE): TBusType;
+begin
+  Result := btUnknown;
+  case sBusType of
+    BusTypeScsi: Result := btSCSI;
+    BusTypeAtapi: Result := btATAPI;
+    BusTypeAta: Result := btATA;
+    BusType1394: Result := btFireWire;
+    BusTypeSsa: Result := btSSA;
+    BusTypeFibre: Result := btFibre;
+    BusTypeUsb: Result := btUSB;
+    BusTypeRAID: Result := btRAID;
+    BusTypeiSCSI: Result := btiSCSI;
+    BusTypeSas: Result := btSAS;
+    BusTypeSata: Result := btSATA;
+  end;
+end;
+
+
