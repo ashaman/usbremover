@@ -129,21 +129,21 @@ begin
       else begin
         if CM_Get_Parent(Parent, DeviceInfo.DevInst, 0) = CR_SUCCESS
         then begin
-          for i := 0 to MAX_ATTEMPTS-3 do
-          begin
-            CM_Request_Device_EjectA(Parent,nil,@VetoName,MAX_PATH,0);
-            if VetoName = ''
-            then begin
-              {бннннр! бнр щрн рпсзззз!!!!}
-              {TODO: Refactor this code and add BlockedFiles search
-                    Check if there's any possibility to switch on
-                    disconnected device}
-
-              //SHChangeNotify(SHCNE_MEDIAREMOVED,SHCNF_PATH,device.Path,nil);
-            end
-            else begin
+          CM_Request_Device_EjectA(Parent,nil,@VetoName,MAX_PATH,0);
+          if VetoName = ''
+          then begin
+            for i := 0 to device.DeviceNumberOfPartitions-1 do
+            begin
             end;
-          end; //end loop
+            {бннннр! бнр щрн рпсзззз!!!!}
+            {TODO: Refactor this code and add BlockedFiles search
+                  Check if there's any possibility to switch on
+                  disconnected device}
+
+            //SHChangeNotify(SHCNE_MEDIAREMOVED,SHCNF_PATH,device.Path,nil);
+          end
+          else begin
+          end;
         end; //end CM_GET_PARENT
       end; //end SetupDiEnum...
     end; //valid handle

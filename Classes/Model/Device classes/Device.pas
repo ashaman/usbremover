@@ -23,39 +23,40 @@ type
   //CLASS-WRAPPER FOR DEVICE
   TDevice = class(TObject)
   private
-    fDeviceID: PChar; //device ID
+    fDeviceID: string; //device ID
     fDeviceNumber: Cardinal; //device number in system
     fDeviceNumberOfPartitions: integer; //number of drive partitions
-    fDeviceManufacturer: PChar; //device manufacturer
-    fDeviceModel: PChar; //device model
-    fDeviceBusType: PChar; //device bus type
-    fDeviceName: PChar; //device name
-    fDeviceVolume: TVolume; //device volume
+    fDeviceManufacturer: string; //device manufacturer
+    fDeviceModel: string; //device model
+    fDeviceBusType: string; //device bus type
+    fDeviceName: string; //device name
+    fDeviceVolumes: TList; //device volume
     //These functions get disk partition information and its device number
     class function GetAPIDeviceNumber(fHandle: THandle): Cardinal;
     procedure GetAPIDeviceDescription(devNumber: Cardinal);
     procedure SetDeviceProperty(devProperty: ISWbemProperty);
     {getters}
-    function GetDeviceID: PChar;
+    function GetDeviceID: string;
     function GetDeviceNumber: Cardinal;
     function GetDeviceNumberOfPartitions: Integer;
-    function GetDeviceManufacturer: PChar;
-    function GetDeviceModel: PChar;
-    function GetBusType: PChar;
-    function GetDeviceName: PChar;
+    function GetDeviceManufacturer: string;
+    function GetDeviceModel: string;
+    function GetBusType: string;
+    function GetDeviceName: string;
+    function GetVolume(index: integer): TVolume;
     {end getters}
   public
     constructor Create(path: PChar);
     destructor Destroy; override;
     //properties
-    property DeviceID: PChar read GetDeviceID; {Device ID}
+    property DeviceID: string read GetDeviceID; {Device ID}
     property DeviceNumber: Cardinal read GetDeviceNumber; {physical drive number}
     property DeviceNumberOfPartitions: integer read GetDeviceNumberOfPartitions; {number of partitions}
-    property DeviceManufacturer: PChar read GetDeviceManufacturer; {device manufacturer}
-    property DeviceModel: PChar read GetDeviceModel; {Model}
-    property DeviceBusType: PChar read GetBusType; {Bus type}
-    property DeviceName: PChar read GetDeviceName; {Name}
-    //property Items[index: integer]: TVolume;
+    property DeviceManufacturer: string read GetDeviceManufacturer; {device manufacturer}
+    property DeviceModel: string read GetDeviceModel; {Model}
+    property DeviceBusType: string read GetBusType; {Bus type}
+    property DeviceName: string read GetDeviceName; {Name}
+    property Items[index: integer]: TVolume read GetVolume;
   end;
 
 {==============================================================================}
@@ -84,39 +85,30 @@ end;
 
 //gets property name and sets the value
 procedure TDevice.SetDeviceProperty(devProperty: ISWbemProperty);
-var
-  buf: TStringList; //buffer string
 begin
-
-  {
-    CLONE VALUES!!!
-  }
-  //string Caption;
-  //string Description;
   if devProperty.Name = 'DeviceID'
   then begin
-    fDeviceID := PChar(@string(devProperty.Get_Value)[1]);
+    fDeviceID := devProperty.Get_Value;
     exit;
   end;
-  //string FirmwareRevision; not available on XP
   if devProperty.Name = 'InterfaceType'
   then begin
-    fDeviceBusType := PChar(@string(devProperty.Get_Value)[1]);
+    fDeviceBusType := devProperty.Get_Value;
     exit;
   end;
   if devProperty.Name = 'Manufacturer'
   then begin
-    fDeviceManufacturer := PChar(@string(devProperty.Get_Value)[1]);
+    fDeviceManufacturer := devProperty.Get_Value;
     exit;
   end;
   if devProperty.Name = 'Model'
   then begin
-    fDeviceModel := PChar(string(devProperty.Get_Value));
+    fDeviceModel := devProperty.Get_Value;
     exit;
   end;
   if devProperty.Name = 'Name'
   then begin
-    fDeviceName := PChar(string(devProperty.Get_Value));
+    fDeviceName := devProperty.Get_Value;
     exit;
   end;
   if devProperty.Name = 'Partitions'
@@ -124,17 +116,22 @@ begin
     fDeviceNumberOfPartitions := Cardinal(devProperty.Get_Value);
     exit;
   end;
-  if devProperty.Name = 'PNPDeviceID'
-  then begin
-    buf := TStringList.Create;
-    ExtractStrings(['\','&'],[], PChar(string(devProperty.Get_Value)), buf);
-    exit;
-  end;
-  //string SerialNumber; not supported on XP
-  //uint64 Size;
+  {
+    if devProperty.Name = 'PNPDeviceID'
+    then begin
+      buf := TStringList.Create;
+      ExtractStrings(['\','&'],[], PChar(string(devProperty.Get_Value)), buf);
+      exit;
+    end;
+    //string SerialNumber; not supported on XP
+    //uint64 Size;
+    //string Caption;
+    //string Description;
+    //string FirmwareRevision; not available on XP
+  }
 end;
 
-{Gets device description from WMI STORAGE_DEVICE_DESCRIPTOR structure}
+{Gets device description from WMI}
 procedure TDevice.GetAPIDeviceDescription(devNumber: Cardinal);
 var
   Locator: TSWbemLocator; //OLE provider
@@ -182,15 +179,11 @@ var
   fHandle: THandle; //device file handle
 begin
   inherited Create;
-  //we open first device logical partition as file
-
+  //we open the whole device
   {
     CM_Locate_DevNode
-
     CM_Get_DevNode_Status - get device Запоминающее устройство для USB
-
     CM_Get_DevNode_Registry_Property
-
     CM_Get_Child
   }
 
@@ -208,7 +201,8 @@ begin
       //getting all necessary info about volume
       GetAPIDeviceDescription(fDeviceNumber);
       //setting the first volume on device
-      fDeviceVolume := TVolume.Create(path);
+      fDeviceVolumes := TList.Create;
+      fDeviceVolumes.Add(TVolume.Create(path));
     end; //success - file created
   finally
     try
@@ -218,18 +212,23 @@ begin
   end;
 end;
 
+{Destructor}
 destructor TDevice.Destroy;
 var
   i: integer;
 begin
-  fDeviceVolume.Destroy;
+  for i := 0 to fDeviceNumberOfPartitions-1 do
+  begin
+    TDevice(fDeviceVolumes.Items[i]).Destroy;
+  end;
+  fDeviceVolumes.Destroy;
   inherited Destroy;
 end;
 
 {
   GETTERS SECTION
 }
-function TDevice.GetBusType: PChar;
+function TDevice.GetBusType: string;
 begin
   Result := fDeviceBusType;
 end;
@@ -239,7 +238,7 @@ begin
   Result := fDeviceNumber;
 end;
 
-function TDevice.GetDeviceID: PChar;
+function TDevice.GetDeviceID: string;
 begin
   Result := fDeviceID;
 end;
@@ -249,19 +248,24 @@ begin
   Result := fDeviceNumberOfPartitions;
 end;
 
-function TDevice.GetDeviceManufacturer: PChar;
+function TDevice.GetDeviceManufacturer: string;
 begin
   Result := fDeviceManufacturer;
 end;
 
-function TDevice.GetDeviceModel: PChar;
+function TDevice.GetDeviceModel: string;
 begin
   Result := fDeviceModel;
 end;
 
-function TDevice.GetDeviceName: PChar;
+function TDevice.GetDeviceName: string;
 begin
   Result := fDeviceName;
+end;
+
+function TDevice.GetVolume(index: integer): TVolume;
+begin
+  Result := TVolume(fDeviceVolumes.Items[index]);
 end;
 
 end.

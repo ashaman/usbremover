@@ -41,7 +41,7 @@ type
 {==============================================================================}
 implementation
 
-uses SysUtils, WinIOCtl;
+uses SysUtils, WinIOCtl, WMI;
 
 //This function gets all logical drives in system
 procedure TDeviceManager.GetDrives;
@@ -59,26 +59,72 @@ begin
   //here we get size needed for buffer
   bufSize := GetLogicalDriveStrings(0,nil);
   if bufSize<>0
-  then begin {everything is OK}
+  then begin //everything is OK
     drives := AllocMem(bufSize); //we alloc memory
     pDrives := drives; //save pointer to the beginning of the array
     GetLogicalDriveStrings(bufSize,drives);
     sizeOfChar := sizeof(drives[0]);
     driveNumber := (bufSize-1) div charCount; //we count the quantity of drives
+
+    drives := drives + charCount*sizeOfChar;  //move to the next list item
+
     for i := 1 to driveNumber do
     begin
-      if FilterDevices(drives)
-      then begin
-        fDevices.Add(TDevice.Create(drives))
-      end; {filter}
+      //if FilterDevices(drives)
+      //then begin
+        fDevices.Add(TDevice.Create(drives));
+      //end; //filter
       drives := drives + charCount*sizeOfChar;  //move to the next list item
-    end; {drives}
+    end; //drives
     FreeMem(pDrives,bufSize); //we release resources
-  end {bufSize<>0}
+  end //bufSize<>0
   else begin
     raise EDeviceException.Create('Initialization failed!');
-  end; {Raise}
-end; {GetDrives}
+  end; //Raise
+end; //GetDrives
+
+{
+//This function gets all logical drives in system
+procedure TDeviceManager.GetDrives;
+var
+  devInfo: THandle; //device info handle
+  devInfoData: TSPDevInfoData; //device info
+  devInterfaceData: TSPDeviceInterfaceData; //device interface info
+  devInterfaceDefailData: TSPDeviceInterfaceDetailData; //concrete info
+  i: integer; //counter
+  dwSize: Cardinal; //dummy integer
+begin
+  //First, we get all disk devices in the system. Then, we choose
+  //which are removable and then add them to the device list
+  devInfo := SetupDiGetClassDevsA(@GUID_DEVCLASS_DISKDRIVE, nil, HWND(nil),
+    DIGCF_PRESENT or DIGCF_DEVICEINTERFACE);
+  if devInfo = INVALID_HANDLE_VALUE
+  then begin
+  end //then
+  else begin
+    i := 0;
+    devInterfaceData.cbSize := sizeof(devInterfaceData);
+    while (SetupDiEnumDeviceInterfaces(devInfo,nil,GUID_DEVCLASS_DISKDRIVE,
+      i,devInterfaceData)) do
+    begin
+      inc(i);
+      SetupDiGetDeviceInterfaceDetailA(devInfo,@devInterfaceData,nil,0,dwSize,nil);
+      if dwSize = 0
+      then begin
+      end //fail
+      else begin
+        devInfoData.cbSize := dwSize;
+        devInterfaceDefailData.cbSize := 5;
+        SetupDiGetDeviceInterfaceDetailA(devInfo,@devInterfaceData,
+          @devInterfaceDefailData,dwSize,dwSize,nil);
+
+          ////!!!!!!!!!!!Look for SafeRemove by Bagel
+          //// the previous works good
+
+      end;
+    end; //while
+  end; //else
+end; //GetDrives}
 
 //Constructor
 constructor TDeviceManager.Create(deviceType: integer);
