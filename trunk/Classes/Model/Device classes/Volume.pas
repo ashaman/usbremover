@@ -1,6 +1,5 @@
 {
   Class which describes device volume.
-  Uses lazy initialization.
 }
 
 unit Volume;
