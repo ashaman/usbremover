@@ -137,6 +137,10 @@ type
     var PropertyRegDataType: DWORD; PropertyBuffer: PBYTE; PropertyBufferSize: DWORD;
     var RequiredSize: DWORD): BOOL; stdcall; external SetupApiModuleName name 'SetupDiGetDeviceRegistryPropertyA';
 
+  function SetupDiOpenDeviceInfoA(DeviceInfoSet: HDEVINFO;
+    const DeviceInstanceId: PAnsiChar; hwndParent: HWND; OpenFlags: DWORD;
+    DeviceInfoData: PSPDevInfoData): LongBool; stdcall; external SetupApiModuleName name 'SetupDiOpenDeviceInfoA'
+
 {
   CONSTANTS AND TYPES FROM CFGMGR32.H
   Partially translated by Alexander Bagel
@@ -175,6 +179,10 @@ type
     pVetoType: PPNP_VETO_TYPE; pszVetoName: PWideChar;
     ulNameLength: ULONG; ulFlags: ULONG): CONFIGRET; stdcall;
     external setupapi;
+
+  function CM_Get_Device_IDA(dnDevInst: DEVINST; Buffer: PAnsiChar;
+    BufferLen: ULONG; ulFlags: ULONG): CONFIGRET; stdcall;
+    external CfgMgr name 'CM_Get_Device_IDA';
 
 implementation
 

@@ -64,7 +64,7 @@ end;
 //Constructor
 constructor TVolume.Create(volumeRoot: PChar);
 begin
-  inherited Create;
+  //inherited Create(volumeRoot);
   fVolumeRootDirectory := volumeRoot;
   GetVolumeInfo;
 end;

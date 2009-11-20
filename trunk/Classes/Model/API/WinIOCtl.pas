@@ -201,6 +201,23 @@ const
   DBT_USERDEFINED = $FFFF;
 
 type
+
+// matches cfmgr32.h CM_DEVCAP_* definitions
+  TDeviceCapabilities =
+    (
+      dcUnknown = $00000000,
+      dcLockSupported = $00000001,
+      dcEjectSupported = $00000002,
+      dcRemovable = $00000004,
+      dcDockDevice = $00000008,
+      dcUniqueId = $00000010,
+      dcSilentInstall = $00000020,
+      dcRawDeviceOk = $00000040,
+      dcSurpriseRemovalOk = $00000080,
+      dcHardwareDisabled = $00000100,
+      dcNonDynamic = $00000200
+    );
+
   //type definition for device descriptor
   STORAGE_DEVICE_DESCRIPTOR = packed record
     Version: ULONG;
@@ -235,7 +252,7 @@ type
   //Type definition for getting physical drive number
   TVolumeDiskExtents = record
     NumberOfDiskExtents: DWORD;
-    Extents: array[0..1] of TDiskExtent;
+    Extents: array[0..0] of TDiskExtent;
   end;
 
   //Drive Length information
@@ -258,4 +275,5 @@ type
   end;
 
 implementation
+
 end.
