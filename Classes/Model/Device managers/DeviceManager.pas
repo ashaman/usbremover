@@ -5,21 +5,22 @@ unit DeviceManager;
 
 interface
 uses
-  Windows, Classes, Device, DeviceException, Messages;
+  Windows, Classes, DeviceException, Messages, WinIOCtl, Device;
 
 type
+
   //Abstract class for device manager
   TDeviceManager = class(TObject)
   private
-    fDeviceType: UINT;
     fEventHandlers: TList;
-    //gets all drives
-    procedure GetDrives;
+    function GetLogicalDrives(const Volumes: TStrings): TStrings; //gets all logical drives in system
+    function GetVolumes: TStrings;
+    function FilterDevices(drivePath: PChar): boolean;
   protected
     fDevices: TList;
-    constructor Create(deviceType: integer);
+    fLogicalDrives: TStringList;
+    constructor Create;
     procedure NotifyAll;
-    function FilterDevices(drivePath: PChar): boolean; virtual; abstract;
     procedure ProcessMessages(var msg: TMessage); message WM_DeviceChange;
   public
     destructor Destroy; override;
@@ -41,10 +42,33 @@ type
 {==============================================================================}
 implementation
 
-uses SysUtils, WinIOCtl, WMI;
+uses
+  SysUtils, WMI, ShellObjExtended;
 
+//Filters only necessary devices which match the type criteria
+function TDeviceManager.FilterDevices(drivePath: PChar): boolean;
+var
+  bufChar: TCharArray;
+  driveType: Cardinal;
+begin
+  Result := false;
+  //we check if this drive is removable or fixed
+  driveType := GetDriveTypeA(drivePath);
+  if (driveType = DRIVE_REMOVABLE) or (driveType = DRIVE_FIXED)
+  then begin
+    QueryDosDevice(PChar(Copy(drivePath,1,2)),@bufChar[0],MAXCHAR);
+    //checking if the device is a floppy drive
+    if (Copy(bufChar,1,14) <> DEV_FLOPPY)
+    then begin
+      Result := true;
+    end;
+  end;
+end;
+
+
+{
 //This function gets all logical drives in system
-procedure TDeviceManager.GetDrives;
+procedure TDeviceManager.GetLogicalDrives;
 const
   charCount = 4; //four characters describe each drive, e.g.: c:\<null-term>
 var
@@ -53,9 +77,9 @@ var
   bufSize: DWORD; //size of buffer
   i: integer; //counter
   driveNumber: integer; //number of drives
-  sizeOfChar: integer; {size of 1 character in bytes:
-                       (ANSI - 1 byte, Unicode - 2 bytes)}
 begin
+  //clearing the list
+  fLogicalDrives.Clear;
   //here we get size needed for buffer
   bufSize := GetLogicalDriveStrings(0,nil);
   if bufSize<>0
@@ -63,18 +87,15 @@ begin
     drives := AllocMem(bufSize); //we alloc memory
     pDrives := drives; //save pointer to the beginning of the array
     GetLogicalDriveStrings(bufSize,drives);
-    sizeOfChar := sizeof(drives[0]);
     driveNumber := (bufSize-1) div charCount; //we count the quantity of drives
-
-    drives := drives + charCount*sizeOfChar;  //move to the next list item
-
     for i := 1 to driveNumber do
     begin
-      //if FilterDevices(drives)
-      //then begin
-        fDevices.Add(TDevice.Create(drives));
-      //end; //filter
-      drives := drives + charCount*sizeOfChar;  //move to the next list item
+      if FilterDevices(drives) //skipping floppies and CDROM's
+      then begin
+        fLogicalDrives.Add(drives);
+        //fDevices.Add(TDevice.Create(drives));
+      end; //filter
+      Inc(drives, charCount);  //move to the next list item
     end; //drives
     FreeMem(pDrives,bufSize); //we release resources
   end //bufSize<>0
@@ -82,6 +103,7 @@ begin
     raise EDeviceException.Create('Initialization failed!');
   end; //Raise
 end; //GetDrives
+}
 
 {
 //This function gets all logical drives in system
@@ -126,15 +148,99 @@ begin
   end; //else
 end; //GetDrives}
 
+
+function TDeviceManager.GetLogicalDrives(const Volumes: TStrings): TStrings;
+var
+  driveName: TCharArray;
+  pDriveName: PChar;
+  i: integer;
+  dummy: Cardinal; //for function
+  s: string;
+  size: integer;
+  handle: THandle;
+  buf: TVolumeDiskExtents;
+
+begin
+
+
+  for i := 0 to Volumes.Count-1 do
+  begin
+    s := Volumes.Strings[i];
+    s[3] := '.';
+    Delete(s,Length(s),1);
+    handle := CreateFile(PChar(s),GENERIC_READ, FILE_SHARE_READ
+      or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
+    if handle <> INVALID_HANDLE_VALUE
+    then begin
+      if DeviceIoControl(handle,IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, nil,0,
+        @buf,sizeof(buf),dummy,nil)
+      then begin
+        dummy := buf.Extents[0].DiskNumber;
+      end;
+      CloseHandle(handle);
+    end;
+    {
+    if GetVolumePathNamesForVolumeNameA(PChar(Volumes.Strings[i]),
+      driveName, sizeof(driveName), dummy)
+    then begin
+      s := String(driveName);
+      pDriveName := @driveName;
+      size := 0;
+      while (s <> '') do
+      begin
+        inc(size, Length(s));
+        s := String(pDriveName + Length(s)+1);
+        //inc(driveName, Length(driveName));
+      end;
+      //FreeMem(pDriveName, size);
+    end //if-then
+    else begin
+      raise EDeviceException.Create(SysErrorMessage(GetLastError)); //
+      exit;
+    end;
+    }
+  end;
+end;
+
+
+//This function gets all
+function TDeviceManager.GetVolumes: TStrings;
+var
+  volName: TCharArray; //name buffer
+  handle: THandle; //handle of the first system volume
+  volList: TStringList; //list of all volumes
+  i: integer; //counter
+  s: string;
+begin
+  //we get the first volume in system
+  Result := TStringList.Create;
+  handle := FindFirstVolumeA(volName,sizeof(volName));
+  if handle = INVALID_HANDLE_VALUE
+  then begin
+    raise EDeviceException.Create(SysErrorMessage(GetLastError));
+  end
+  else begin
+    Result.Add(String(volName));
+    //we get all other volumes
+    while FindNextVolumeA(handle,volName,sizeof(volName)) do
+    begin
+      Result.Add(String(volName));
+    end;
+    FindVolumeClose(handle);
+  end;
+end;
+
+
 //Constructor
-constructor TDeviceManager.Create(deviceType: integer);
+constructor TDeviceManager.Create;
 begin
   inherited Create;
-  //create two lists: event listeners and devices
+  //create lists: event listeners and devices
   fEventHandlers := TList.Create;
   fDevices := TList.Create;
-  self.fDeviceType := deviceType;
-  GetDrives;
+  //create logical drive letters list
+  fLogicalDrives := TStringList.Create;
+  GetVolumes;
 end;
 
 //Destructor
@@ -152,6 +258,7 @@ begin
   end;
   fEventHandlers.Destroy;
   fDevices.Destroy;
+  fLogicalDrives.Destroy;
   inherited Destroy;
 end;
 

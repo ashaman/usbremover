@@ -7,7 +7,8 @@ unit USBManager;
 
 interface
 uses
-  DeviceManager, Device, Messages, WinIOCtl, Windows, DeviceException;
+  DeviceManager, Messages, WinIOCtl, Windows, DeviceException, Device;
+
 const
   MAX_ATTEMPTS = 3;
 
@@ -15,8 +16,6 @@ type
   TUSBManager = class(TDeviceManager)
   private
     constructor Create;
-  protected
-    function FilterDevices(drivePath: PChar): boolean; override;
   public
     destructor Destroy; override;
     procedure RemoveDrive(index: integer); overload; override;
@@ -28,52 +27,38 @@ type
 implementation
 
 uses
-  SysUtils, WMI, ShlObj;
+  SysUtils, WMI, ShlObj, Classes, ShellObjExtended;
 
 var
   Instance: TUSBManager;
 
-//Filters only necessary devices which match the type criteria
-function TUSBManager.FilterDevices(drivePath: PChar): boolean;
-var
-  bufChar: TCharArray;
-begin
-  Result := false;
-  //we check if this drive is removable
-  if GetDriveType(drivePath) = DRIVE_REMOVABLE
-  then begin
-
-  {procedure TDriveEjector.CheckForCardReaders;
-var
-  i: integer;
-begin
-  if DrivesCount = 0 then exit;
-
-  for i := 0 to DrivesCount - 1 do
-  begin
-    if GetNoDevicesWithSameParentInst(RemovableDrives[i].ParentDevInst) > 1 then
-      if GetNoDevicesWithSameProductID(RemovableDrives[i].ProductId) > 1 then //Hard drive partitions
-        RemovableDrives[i].IsCardReader:=False
-      else
-        RemovableDrives[i].IsCardReader:=True //Matching devices with parent inst but differing device names are likely to be card readers
-  end;
-end;
-}
-    QueryDosDevice(PChar(Copy(drivePath,1,2)),@bufChar[0],MAXCHAR);
-    {checking if the device is a floppy drive}
-    if (Copy(bufChar,1,14) <> DEV_FLOPPY)
-    then begin
-      {TODO: check if this device is a card reader}
-      Result := true;
-    end;
-  end;
-end;
-
 //This constructor calls the parent one
 //and passes as parameter removable drive type
 constructor TUSBManager.Create;
+var
+  buf: TCharArray;
+  i: integer;
+  volumes: TStringList;
+  res: LongBool;
+  err: string;
 begin
-  inherited Create(DRIVE_REMOVABLE);
+  inherited Create;
+  volumes := TStringList.Create;
+  for i := 0 to fLogicalDrives.Count-1 do
+  begin
+    err := fLogicalDrives.Strings[i];
+    res := GetVolumeNameForVolumeMountPointA(PChar(err),buf,sizeof(buf));
+    if res
+    then begin
+      volumes.Add(string(buf));
+    end
+    else begin
+      if integer(res) = ERROR_MORE_DATA
+      then begin
+        err := SysErrorMessage(GetLastError);
+      end;
+    end;
+  end;
 end;
 
 //Overriden destructor
@@ -112,6 +97,7 @@ var
   Parent: DWORD;
   VetoName: TCharArray;
 begin
+  {
   DeviceInfo.cbSize := sizeof(SP_DEVINFO_DATA);
   DrivesPnpHandle := SetupDiGetClassDevsA(@GUID_DEVCLASS_DISKDRIVE, nil,
     HWND(nil), DIGCF_PRESENT);
@@ -135,10 +121,10 @@ begin
             for i := 0 to device.DeviceNumberOfPartitions-1 do
             begin
             end;
-            {ÂÎÎÎÎÒ! ÂÎÒ ÝÒÎ ÒÐÓÚÚÚÚ!!!!}
-            {TODO: Refactor this code and add BlockedFiles search
-                  Check if there's any possibility to switch on
-                  disconnected device}
+            //ÂÎÎÎÎÒ! ÂÎÒ ÝÒÎ ÒÐÓÚÚÚÚ!!!!
+            //TODO: Refactor this code and add BlockedFiles search
+                  //Check if there's any possibility to switch on
+                  //disconnected device
 
             //SHChangeNotify(SHCNE_MEDIAREMOVED,SHCNF_PATH,device.Path,nil);
           end
@@ -149,7 +135,7 @@ begin
     end; //valid handle
   finally
     SetupDiDestroyDeviceInfoList(DrivesPnpHandle);
-  end;
+  end;              }
 end;
 
 {
