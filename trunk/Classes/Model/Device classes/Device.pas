@@ -27,18 +27,22 @@ type
     fDeviceInfoData: TDeviceInfoData; //device info data
     fFriendlyName: string; //device full name
     fParent: TDevice; //parent device of the object. If it is not removable - is null
+  protected
     function GetChild(index: integer): TDevice;
+    function GetCount: integer;
     function GetInstanceHandle: THandle;
-    class function GetDeviceInformation(InstanceHandle: THandle; DeviceInfoSet: THandle): TDeviceInfoData;
+    class function GetDeviceInformation(DeviceNumber: Cardinal; DeviceInfoSet: THandle): TDeviceInfoData;
     class function GetDeviceInformationSet(ClassGUID: TGUID): THandle;
+    class function GetDeviceNumber(FileHandle: THandle): Cardinal;
     class function GetDeviceProperty(PropertyCode: integer; DeviceInfoSet: THandle): Pointer;
   public
-    constructor Create(ClassGUID: TGUID);
+    constructor Create(ClassGUID: TGUID; Path: string);
     destructor Destroy; override;
     property BusType: TBusType read fBusType;
     property Capabilities: TDeviceCapabilities read fCapabilities;
     property Children [index: integer]: TDevice read GetChild;
     property ClassGUID: TGUID read fClassGUID;
+    property Count: integer read GetCount;
     property Description: string read fDescription;
     property DeviceClassName: string read fDeviceClassName;
     property FriendlyName: string read fFriendlyName;
@@ -51,20 +55,49 @@ implementation
 uses
   Windows, DeviceException, SysUtils;
 
+//This function returns the total count of child devices
+function TDevice.GetCount: integer;
+begin
+  Result := fChildren.Count;
+end; //GetCount
+
+//This function gets the child of this device specified by index
 function TDevice.GetChild(index: integer): TDevice;
 begin
   Result := TDevice(fChildren.Items[index]^);
-end;
+end; //GetChild
 
 function TDevice.GetInstanceHandle: THandle;
 begin
   Result := fDeviceInfoData.DevInst;
 end;
 
-class function TDevice.GetDeviceProperty(PropertyCode: integer; DeviceInfoSet: THandle): Pointer;
+//This function gets device number using the DeviceIoControl function
+class function TDevice.GetDeviceNumber(FileHandle: THandle): Cardinal;
+var
+  deviceNumber: TStorageDeviceNumber; //structure that contains device number
+  dummy: Cardinal; //returned bytes
 begin
-end;
+  Result := INVALID_HANDLE_VALUE;
+  //getting device number through DeviceIoContrtol and TStorageDeviceNumber
+  if not DeviceIoControl(FileHandle,IOCTL_STORAGE_GET_DEVICE_NUMBER, nil, 0,
+    @deviceNumber, sizeof(deviceNumber), dummy, nil)
+  then begin
+    raise EDeviceException.Create(SysErrorMessage(GetLastError));
+  end //then
+  else begin
+    Result := deviceNumber.DeviceNumber;
+  end; //else - success
+end; //GetDeviceNumber
 
+
+//This function returns the property specified by its control code
+class function TDevice.GetDeviceProperty(PropertyCode: integer;
+  DeviceInfoSet: THandle): Pointer;
+begin
+  Result := nil;
+  SetupDiGetDeviceRegistryProperty(DeviceInfoSet,f)
+end; //GetDeviceProperty
 
 //This function retutns the handle to the device information set for the
 //specified device class
@@ -77,42 +110,45 @@ begin
   then begin
     raise EDeviceException.Create(SysErrorMessage(GetLastError));
   end;
-end;
+end; //GetDeviceInformationSet
 
-
-//In this function we get the specified device information by its instance handle
-//We get all the devices of the specified class and get one of them
-class function TDevice.GetDeviceInformation(InstanceHandle: THandle; DeviceInfoSet: THandle):
-  TDeviceInfoData;
+//In this function we get the specified device information by its index in the
+//device information set
+class function TDevice.GetDeviceInformation(DeviceNumber: Cardinal;
+  DeviceInfoSet: THandle): TDeviceInfoData;
 var
   buffer: TCharArray; //string buffer
 begin
-  //get the specified device ID
-  if (CM_Get_Device_IDA(InstanceHandle,@buffer,sizeof(buffer),0) <> 0)
+  if not SetupDiEnumDeviceInfo(DeviceInfoSet,DeviceNumber,Result)
   then begin
     raise EDeviceException.Create(SysErrorMessage(GetLastError));
-  end //then
-  else begin
-    //open the specified device information
-    if not SetupDiOpenDeviceInfoA(DeviceInfoSet, PChar(@buffer), 0, 0, @Result)
-    then begin
-      raise EDeviceException.Create(SysErrorMessage(GetLastError));
-    end; //then
-  end; //else
+  end; //then
 end; //GetDeviceInformation
 
-constructor TDevice.Create(ClassGUID: TGUID);
+
+{CONSTRUCTOR}
+constructor TDevice.Create(ClassGUID: TGUID; Path: string);
 var
   deviceInfoSet: THandle;
   deviceInfoData: TDeviceInfoData;
 begin
+  inherited Create;
   deviceInfoSet := TDevice.GetDeviceInformationSet(ClassGUID);
   fClassGUID := ClassGUID;
   //SetupDiGetDeviceRegistryProperty(deviceInfoSet,deviceInfoData,SPDRP_CLASS
 end;
 
+{DESTRUCTOR}
 destructor TDevice.Destroy;
+var
+  i: integer;
 begin
+  for i := 0 to fChildren.Count-1 do
+  begin
+    TDevice(fChildren.Items[i]^).Destroy;
+  end;
+  fParent.Destroy;
+  inherited Destroy;
 end;
 
 end.
