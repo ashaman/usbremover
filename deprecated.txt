@@ -162,3 +162,24 @@ begin
 end; //GetDrives
 
 
+//In this function we get the specified device information by its instance handle
+//We get all the devices of the specified class and get one of them
+class function TDevice.GetDeviceInformation(InstanceHandle: THandle; DeviceInfoSet: THandle):
+  TDeviceInfoData;
+var
+  buffer: TCharArray; //string buffer
+begin
+  //get the specified device ID
+  if (CM_Get_Device_IDA(InstanceHandle,@buffer,sizeof(buffer),0) <> 0)
+  then begin
+    raise EDeviceException.Create(SysErrorMessage(GetLastError));
+  end //then
+  else begin
+    //open the specified device information
+    if not SetupDiOpenDeviceInfoA(DeviceInfoSet, PChar(@buffer), 0, 0, @Result)
+    then begin
+      raise EDeviceException.Create(SysErrorMessage(GetLastError));
+    end; //then
+  end; //else
+end; //GetDeviceInformation
+

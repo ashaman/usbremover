@@ -30,6 +30,9 @@ type
 }
 
 const
+  {
+    From ntddk.h and wdm.h
+  }
   FILE_DEVICE_DISK = $00000007;
   FILE_DEVICE_MASS_STORAGE = $0000002d;
   FILE_DEVICE_FILE_SYSTEM = $00000009;
