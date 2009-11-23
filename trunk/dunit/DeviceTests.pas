@@ -34,7 +34,7 @@ uses SysUtils, Windows;
 
 procedure TDeviceTests.SetUp;
 begin
-  fDevice := TDevice.Create(GUID_DEVCLASS_DISKDRIVE);
+  fDevice := TDevice.Create(GUID_DEVCLASS_DISKDRIVE,'');
 end;
 
 procedure TDeviceTests.TearDown;
