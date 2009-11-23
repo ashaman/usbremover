@@ -43,7 +43,7 @@ type
 implementation
 
 uses
-  SysUtils, WMI, ShellObjExtended;
+  SysUtils, WMI, ShellObjExtended, Volume;
 
 //Filters only necessary devices which match the type criteria
 function TDeviceManager.FilterDevices(drivePath: PChar): boolean;
@@ -231,7 +231,8 @@ begin
   end;
   for i := 0 to Result.Count-1 do
   begin
-    device := TDevice.Create(GUID_DEVINTERFACE_VOLUME,result.Strings[i]);
+    s := result.Strings[i];
+    device := TVolume.Create(s);
   end;
 end;
 

@@ -1,6 +1,12 @@
 {
   Device class.
   Developed by J.L. Blackrow.
+    }
+  {
+  TODO: add function that will filter only removable devices!!!
+   }
+   {
+  TODO: get bus number through DeviceIoControl
 }
 
 unit Device;
@@ -32,12 +38,13 @@ type
     function GetChild(index: integer): TDevice;
     function GetCount: integer;
     function GetInstanceHandle: THandle;
-    class function FormatDevicePath(const Path: string): string;
-    class function GetDeviceInformation(DeviceNumber: Cardinal; DeviceInfoSet: THandle): TDeviceInfoData;
-    class function GetDeviceInformationSet(ClassGUID: TGUID): THandle;
-    class function GetDeviceNumber(FileHandle: THandle): Cardinal;
-    class function GetDeviceProperty(DeviceNumber: Cardinal; DeviceInformation: TDeviceInfoData;
-      PropertyCode: integer; DeviceInfoSet: THandle): Pointer;
+
+    function FormatDevicePath(const Path: string): string;
+    function GetDeviceInformation(DeviceNumber: Cardinal; DeviceInfoSet: THandle): TDeviceInfoData;
+    function GetDeviceInformationSet(ClassGUID: TGUID): THandle;
+    function GetDeviceNumber(FileHandle: THandle): Cardinal;
+    function GetDeviceProperty(DeviceNumber: Cardinal; DeviceInformation: TDeviceInfoData;
+      PropertyCode: integer; DeviceInfoSet: THandle): TCharArray;
   public
     constructor Create(ClassGUID: TGUID; Path: string);
     destructor Destroy; override;
@@ -77,10 +84,8 @@ begin
   Result := fDeviceInfoData.DevInst;
 end;
 
-{CLASS FUNCTIONS}
-
 //Formats the device path for opening it as file
-class function TDevice.FormatDevicePath(const Path: string): string;
+function TDevice.FormatDevicePath(const Path: string): string;
 const
   dot = '.';
   question = '?'; //question mark
@@ -105,7 +110,7 @@ end; //FormatDevicePath
 
 
 //This function gets device number using the DeviceIoControl function
-class function TDevice.GetDeviceNumber(FileHandle: THandle): Cardinal;
+function TDevice.GetDeviceNumber(FileHandle: THandle): Cardinal;
 var
   deviceNumber: TStorageDeviceNumber; //structure that contains device number
   dummy: Cardinal; //returned bytes
@@ -123,31 +128,23 @@ end; //GetDeviceNumber
 
 
 //This function returns the property specified by its control code
-class function TDevice.GetDeviceProperty(DeviceNumber: Cardinal;
+function TDevice.GetDeviceProperty(DeviceNumber: Cardinal;
   DeviceInformation: TDeviceInfoData; PropertyCode: integer;
-  DeviceInfoSet: THandle): Pointer;
-const
-  propertyBufferSize = 1024;
+  DeviceInfoSet: THandle): TCharArray;
 var
   dummy: Cardinal; //variable for the function call
-  size: Cardinal;
-  buffer: TCharArray;
 begin
-  Result := nil;
   //getting device property
   if not SetupDiGetDeviceRegistryProperty(DeviceInfoSet, DeviceInformation, PropertyCode,
-    dummy, @buffer, sizeof(buffer), size)
+    dummy, PByte(@Result[0]), sizeof(Result), dummy)
   then begin
-    raise EDeviceException.Create(SysErrorMessage(GetLastError));
+    //raise EDeviceException.Create(SysErrorMessage(GetLastError));
   end
-  else begin
-    Result := @buffer;
-  end;
 end; //GetDeviceProperty
 
 //This function retutns the handle to the device information set for the
 //specified device class
-class function TDevice.GetDeviceInformationSet(ClassGUID: TGUID): THandle;
+function TDevice.GetDeviceInformationSet(ClassGUID: TGUID): THandle;
 begin
   //get all devices of the specified class
   Result := SetupDiGetClassDevsA(@ClassGUID, nil, 0, DIGCF_PRESENT or
@@ -160,14 +157,33 @@ end; //GetDeviceInformationSet
 
 //In this function we get the specified device information by its index in the
 //device information set
-class function TDevice.GetDeviceInformation(DeviceNumber: Cardinal;
+function TDevice.GetDeviceInformation(DeviceNumber: Cardinal;
   DeviceInfoSet: THandle): TDeviceInfoData;
+var
+  i: integer;
+  deviceInterfaceData: TSPDeviceInterfaceData;
 begin
-  Result.cbSize := sizeof(Result);
-  if not SetupDiEnumDeviceInfo(DeviceInfoSet,DeviceNumber,Result)
-  then begin
-    raise EDeviceException.Create(SysErrorMessage(GetLastError));
-  end; //then
+  i := 0;
+  while SetupDiEnumDeviceInterfaces(DeviceInfoSet, nil, fClassGUID, i,
+    deviceInterfaceData) do
+  begin
+    {
+      TODO: get device information
+      Use
+        SetupDiEnumDeviceInterfaces
+        SetupDiGetDeviceInterfaceDetail
+      Or
+        SetupDiEnumDeviceInfo and maybe
+        GetDeviceRegistryProperty SPDRP_PHYSICAL_DEVICE_OBJECT_NAME
+      Look at Bagel's implementation and at the Uwe Sieber article
+      and also at Gruzin article
+    }
+    Result.cbSize := sizeof(Result);
+    if not SetupDiEnumDeviceInfo(DeviceInfoSet,DeviceNumber+1,Result)
+    then begin
+      raise EDeviceException.Create(SysErrorMessage(GetLastError));
+    end; //then
+  end;
 end; //GetDeviceInformation
 
 
@@ -178,10 +194,12 @@ var
   deviceInfoData: TDeviceInfoData; //device information data
   deviceNumber: Cardinal; //device index in the device informatiom set
   fileHandle: THandle; //device file handle
+  s: string;
 begin
   inherited Create;
   //we open device as file
-  fileHandle := CreateFile(PChar(TDevice.FormatDevicePath(Path)), GENERIC_READ,
+  s := FormatDevicePath(Path);
+  fileHandle := CreateFile(PChar(s), GENERIC_READ,
     FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
   //opening failed
   if fileHandle = INVALID_HANDLE_VALUE
@@ -191,24 +209,27 @@ begin
   else begin
     try
       //Here we get device information
-      deviceInfoSet := TDevice.GetDeviceInformationSet(ClassGUID);
-      deviceNumber := TDevice.GetDeviceNumber(fileHandle);
-      deviceInfoData := TDevice.GetDeviceInformation(deviceNumber, deviceInfoSet);
+      deviceInfoSet := GetDeviceInformationSet(ClassGUID);
+      deviceNumber := GetDeviceNumber(fileHandle);
+      deviceInfoData := GetDeviceInformation(deviceNumber, deviceInfoSet);
       //Getting device properties
-      {fBusType := TBusType(TDevice.GetDeviceProperty(deviceNumber,
-        deviceInfoData, SPDRP_BUSNUMBER, deviceInfoSet)^);}
-      fCapabilities := TDeviceCapabilities(TDevice.GetDeviceProperty(deviceNumber,
-        deviceInfoData, SPDRP_CAPABILITIES, deviceInfoSet)^);
+      //Bus type is not applicable to volumes!!!
+      {
+      fBusType := TBusType(StrToInt(TDevice.GetDeviceProperty(deviceNumber,
+        deviceInfoData, SPDRP_BUSNUMBER, deviceInfoSet)));
+      fCapabilities := TDeviceCapabilities(StrToInt(TDevice.GetDeviceProperty(deviceNumber,
+        deviceInfoData, SPDRP_CAPABILITIES, deviceInfoSet)));
+        }
       fClassGUID := ClassGUID;
-      fDescription := String(TDevice.GetDeviceProperty(deviceNumber,
-        deviceInfoData, SPDRP_DEVICEDESC, deviceInfoSet)^);
-      fDeviceClassName := String(TDevice.GetDeviceProperty(deviceNumber,
-        deviceInfoData, SPDRP_CLASS, deviceInfoSet)^);
+      fDescription := String(GetDeviceProperty(deviceNumber,
+        deviceInfoData, SPDRP_DEVICEDESC, deviceInfoSet));
+      fDeviceClassName := String(GetDeviceProperty(deviceNumber,
+        deviceInfoData, SPDRP_CLASS, deviceInfoSet));
       fDeviceInfoData := deviceInfoData;
-      fFriendlyName := String(TDevice.GetDeviceProperty(deviceNumber,
-        deviceInfoData, SPDRP_FRIENDLYNAME, deviceInfoSet)^);
-      fManufacturer := String(TDevice.GetDeviceProperty(deviceNumber,
-        deviceInfoData, SPDRP_MFG, deviceInfoSet)^);
+      fFriendlyName := String(GetDeviceProperty(deviceNumber,
+        deviceInfoData, SPDRP_FRIENDLYNAME, deviceInfoSet));
+      fManufacturer := String(GetDeviceProperty(deviceNumber,
+        deviceInfoData, SPDRP_MFG, deviceInfoSet));
     finally
       CloseHandle(fileHandle);
     end;

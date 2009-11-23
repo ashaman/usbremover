@@ -1,41 +1,43 @@
 {
   Class which describes device volume.
+
+  TODO: add class function that allows to get physical location of the volume
+  through IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS
+  //Retrieves the physical location of the specified volume on one or more disks. 
 }
 
 unit Volume;
 
 interface
 
+uses
+  Device, Classes;
+
 type
-  TVolume = class(TObject)
+  TVolume = class(TDevice)
   private
-    fVolumeLabel: PChar; //volume label
+    fVolumeLabel: string; //volume label
     fVolumeID: Cardinal; //volume numeric ID
-    fVolumeRootDirectory: PChar; //volume root directory
+    fVolumeRootDirectories: TStringList; //volume root directory
     fVolumeSize: Int64; //volume size
-    fVolumeFileSystemType: PChar; //volume file system type
+    fVolumeFileSystemType: string; //volume file system type
     procedure GetVolumeInfo; //gets volume information
     //getters
-    function GetVolumeLabel: PChar;
-    function GetVolumeID: Cardinal;
-    function GetVolumeRootDirectory: PChar;
-    function GetVolumeSize: Int64;
-    function GetVolumeFileSystemType: PChar;
   public
-    constructor Create(volumeRoot: PChar);
+    constructor Create(Path: string);
     destructor Destroy; override;
     //properties
-    property VolumeLabel: PChar read GetVolumeLabel;
-    property VolumeID: Cardinal read GetVolumeID;
-    property VolumeRootDirectory: PChar read GetVolumeRootDirectory;
-    property VolumeSize: Int64 read GetVolumeSize;
-    property VolumeFileSystemType: PChar read GetVolumeFileSystemType;
+    property VolumeLabel: string read fVolumeLabel;
+    property VolumeID: Cardinal read fVolumeID;
+    property VolumeRootDirectories: TStringList read fVolumeRootDirectories;
+    property VolumeSize: Int64 read fVolumeSize;
+    property VolumeFileSystemType: string read fVolumeFileSystemType;
   end;
 
 implementation
 
 uses
-  WinIOCtl, Windows, DeviceException, SysUtils;
+  WinIOCtl, Windows, DeviceException, SysUtils, WMI;
 
 //Gets volume info through WinAPI function GetVolumeInformation
 procedure TVolume.GetVolumeInfo;
@@ -47,25 +49,25 @@ var
   FSFlags: Cardinal; //File system flags set for device
 begin
   //Getting volume information
-  Success := GetVolumeInformation(fVolumeRootDirectory, VolumeNameBuf, MAX_PATH,
-    @fVolumeID, ReturnedBytes, FSFlags, FileSystemNameBuf, MAX_PATH);
+  Success := GetVolumeInformation(PChar(fVolumeRootDirectories.Strings[0]),
+    VolumeNameBuf, MAX_PATH, @fVolumeID, ReturnedBytes, FSFlags,
+    FileSystemNameBuf, MAX_PATH);
   if not Success
   then begin
     raise EDeviceException.Create(SysErrorMessage(GetLastError));
   end //cannot get volume info
   else begin
     //setting volume label and FS type
-    fVolumeLabel := PChar(@VolumeNameBuf);
-    fVolumeFileSystemType := PChar(@FileSystemNameBuf);
-    fVolumeSize := DiskSize(ord(fVolumeRootDirectory[0])-ord(FLOPPY_DRIVE_1)+1);
+    fVolumeLabel := String(VolumeNameBuf);
+    fVolumeFileSystemType := String(@FileSystemNameBuf);
+    //TODO get volume size... How?!?!
   end;
 end;
 
 //Constructor
-constructor TVolume.Create(volumeRoot: PChar);
+constructor TVolume.Create(Path: string);
 begin
-  //inherited Create(volumeRoot);
-  fVolumeRootDirectory := volumeRoot;
+  inherited Create(GUID_DEVINTERFACE_VOLUME, Path);
   GetVolumeInfo;
 end;
 
@@ -73,34 +75,6 @@ end;
 destructor TVolume.Destroy;
 begin
   inherited Destroy;
-end;
-
-{
-  GETTERS SECTION
-}
-function TVolume.GetVolumeLabel: PChar;
-begin
-  Result := fVolumeLabel;
-end;
-
-function TVolume.GetVolumeID: Cardinal;
-begin
-  Result := fVolumeID;
-end;
-
-function TVolume.GetVolumeRootDirectory: PChar;
-begin
-  Result := fVolumeRootDirectory;
-end;
-
-function TVolume.GetVolumeSize: Int64;
-begin
-  Result := fVolumeSize;
-end;
-
-function TVolume.GetVolumeFileSystemType: PChar;
-begin
-  Result := fVolumeFileSystemType;
 end;
 
 end.
