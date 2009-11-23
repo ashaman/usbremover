@@ -211,6 +211,7 @@ var
   volList: TStringList; //list of all volumes
   i: integer; //counter
   s: string;
+  device: TDevice;
 begin
   //we get the first volume in system
   Result := TStringList.Create;
@@ -227,6 +228,10 @@ begin
       Result.Add(String(volName));
     end;
     FindVolumeClose(handle);
+  end;
+  for i := 0 to Result.Count-1 do
+  begin
+    device := TDevice.Create(GUID_DEVINTERFACE_VOLUME,result.Strings[i]);
   end;
 end;
 
@@ -278,7 +283,7 @@ begin
 end;
 
 {
-  IT DOES NOT WORD PROPERLY!!!
+  IT DOES NOT WORK PROPERLY!!!
 }
 
 //This function searches the device by its handle
