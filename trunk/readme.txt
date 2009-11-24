@@ -28,3 +28,6 @@ It is necessary to create Volume class...
 
 11:01 13.11.2009
 Some problems occured when I found out that on my telephone there are two separate drives! But this is the only device! When something is opened from one drive, and I'm trying to eject another - it fails! So, it's necessary to solve this problem. My idea is to find all removeable devices in system, get their children, and for each child - check if there are any processes using files on it.
+
+23:46 24.11.2009
+Ok, the development is in progress... I hope we'll finish the model until the end of this week...

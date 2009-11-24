@@ -1,11 +1,7 @@
 {
   Device class.
   Developed by J.L. Blackrow.
-    }
-  {
-  TODO: add function that will filter only removable devices!!!
-   }
-   {
+
   TODO: get bus number through DeviceIoControl
 }
 
@@ -26,25 +22,29 @@ type
   private
     fBusType: TBusType; //device bus type
     fCapabilities: TDeviceCapabilities; //device capabilities
-    fChildren: TList; //child devices
     fClassGUID: TGUID; //class GUID
     fDescription: string; //device description string
     fDeviceClassName: string; //class name
     fDeviceInfoData: TDeviceInfoData; //device info data
     fFriendlyName: string; //device full name
     fManufacturer: string; //device manufacturer
-    fParent: TDevice; //parent device of the object. If it is not removable - is null
   protected
+    fChildren: TList; //child devices
+    fParent: TDevice; //parent device of the object. If it is not removable - is null
+    fPath: string; //device path
+
     function GetChild(index: integer): TDevice;
     function GetCount: integer;
     function GetInstanceHandle: THandle;
 
-    function FormatDevicePath(const Path: string): string;
-    function GetDeviceInformation(DeviceNumber: Cardinal; DeviceInfoSet: THandle): TDeviceInfoData;
+    function GetDeviceInformation(DeviceNumber: TStorageDeviceNumber;
+      ClassGUID: TGUID; DeviceInfoSet: THandle): TDeviceInfoData;
     function GetDeviceInformationSet(ClassGUID: TGUID): THandle;
-    function GetDeviceNumber(FileHandle: THandle): Cardinal;
+    function GetDeviceNumber(FileHandle: THandle): TStorageDeviceNumber;
     function GetDeviceProperty(DeviceNumber: Cardinal; DeviceInformation: TDeviceInfoData;
       PropertyCode: integer; DeviceInfoSet: THandle): TCharArray;
+
+    class function FormatDevicePath(const Path: string): string;
   public
     constructor Create(ClassGUID: TGUID; Path: string);
     destructor Destroy; override;
@@ -85,7 +85,7 @@ begin
 end;
 
 //Formats the device path for opening it as file
-function TDevice.FormatDevicePath(const Path: string): string;
+class function TDevice.FormatDevicePath(const Path: string): string;
 const
   dot = '.';
   question = '?'; //question mark
@@ -110,22 +110,17 @@ end; //FormatDevicePath
 
 
 //This function gets device number using the DeviceIoControl function
-function TDevice.GetDeviceNumber(FileHandle: THandle): Cardinal;
+function TDevice.GetDeviceNumber(FileHandle: THandle): TStorageDeviceNumber;
 var
-  deviceNumber: TStorageDeviceNumber; //structure that contains device number
   dummy: Cardinal; //returned bytes
 begin
   //getting device number through DeviceIoContrtol and TStorageDeviceNumber
   if not DeviceIoControl(FileHandle,IOCTL_STORAGE_GET_DEVICE_NUMBER, nil, 0,
-    @deviceNumber, sizeof(deviceNumber), dummy, nil)
+    @Result, sizeof(Result), dummy, nil)
   then begin
     raise EDeviceException.Create(SysErrorMessage(GetLastError));
   end //then
-  else begin
-    Result := deviceNumber.DeviceNumber;
-  end; //else - success
 end; //GetDeviceNumber
-
 
 //This function returns the property specified by its control code
 function TDevice.GetDeviceProperty(DeviceNumber: Cardinal;
@@ -157,33 +152,55 @@ end; //GetDeviceInformationSet
 
 //In this function we get the specified device information by its index in the
 //device information set
-function TDevice.GetDeviceInformation(DeviceNumber: Cardinal;
-  DeviceInfoSet: THandle): TDeviceInfoData;
+function TDevice.GetDeviceInformation(DeviceNumber: TStorageDeviceNumber;
+  ClassGUID: TGUID; DeviceInfoSet: THandle): TDeviceInfoData;
 var
-  i: integer;
-  deviceInterfaceData: TSPDeviceInterfaceData;
+  i: integer; //current index
+  deviceData: TSPDevInfoData; //device info data
+  deviceInterfaceData: TSPDeviceInterfaceData; //device interface handle data
+  deviceInterfaceDetailData: TSPDeviceInterfaceDetailDataA; //interface detail
+  dwSize: Cardinal; //buffer size
+  fHandle: THandle; //file-device handle
+  found: boolean; //boolean flag for stopping the search
+  buffer: TStorageDeviceNumber; //buffer for device number
 begin
   i := 0;
-  while SetupDiEnumDeviceInterfaces(DeviceInfoSet, nil, fClassGUID, i,
-    deviceInterfaceData) do
+  found := false;
+  deviceInterfaceData.cbSize := sizeof(deviceInterfaceData);
+  //enumeration device interfaces
+  while (SetupDiEnumDeviceInterfaces(DeviceInfoSet, nil, ClassGUID, i,
+    deviceInterfaceData)) and (not found) do
   begin
-    {
-      TODO: get device information
-      Use
-        SetupDiEnumDeviceInterfaces
-        SetupDiGetDeviceInterfaceDetail
-      Or
-        SetupDiEnumDeviceInfo and maybe
-        GetDeviceRegistryProperty SPDRP_PHYSICAL_DEVICE_OBJECT_NAME
-      Look at Bagel's implementation and at the Uwe Sieber article
-      and also at Gruzin article
-    }
-    Result.cbSize := sizeof(Result);
-    if not SetupDiEnumDeviceInfo(DeviceInfoSet,DeviceNumber+1,Result)
+    //preparations for function call
+    deviceData.cbSize := sizeof(deviceData);
+    deviceInterfaceDetailData.cbSize := 5;
+    //getting device number
+    if not SetupDiGetDeviceInterfaceDetailA(DeviceInfoSet, @deviceInterfaceData,
+      @deviceInterfaceDetailData, dwSize, dwSize, @deviceData)
     then begin
       raise EDeviceException.Create(SysErrorMessage(GetLastError));
-    end; //then
-  end;
+    end //then - exception
+    else begin
+      //opening device as file
+      fHandle := CreateFile(PChar(@deviceInterfaceDetailData.DevicePath),
+        GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
+      if fHandle = INVALID_HANDLE_VALUE
+      then begin
+        raise EDeviceException.Create(SysErrorMessage(GetLastError));
+      end //then - invalid file handle
+      else begin
+        //checking for device number matches
+        buffer := GetDeviceNumber(fHandle);
+        if (buffer.DeviceNumber = DeviceNumber.DeviceNumber) and
+          (buffer.PartitionNumber = DeviceNumber.PartitionNumber)
+        then begin
+          Result := deviceData;
+          found := true;
+        end; //then - found exact match
+        Inc(i);
+      end; //else - successfully opened
+    end //else
+  end; //while
 end; //GetDeviceInformation
 
 
@@ -192,14 +209,13 @@ constructor TDevice.Create(ClassGUID: TGUID; Path: string);
 var
   deviceInfoSet: THandle; //device information set handle
   deviceInfoData: TDeviceInfoData; //device information data
-  deviceNumber: Cardinal; //device index in the device informatiom set
+  deviceNumber: TStorageDeviceNumber; //device number structure
   fileHandle: THandle; //device file handle
-  s: string;
 begin
   inherited Create;
   //we open device as file
-  s := FormatDevicePath(Path);
-  fileHandle := CreateFile(PChar(s), GENERIC_READ,
+  fPath := FormatDevicePath(Path);
+  fileHandle := CreateFile(PChar(fPath), GENERIC_READ,
     FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
   //opening failed
   if fileHandle = INVALID_HANDLE_VALUE
@@ -211,27 +227,26 @@ begin
       //Here we get device information
       deviceInfoSet := GetDeviceInformationSet(ClassGUID);
       deviceNumber := GetDeviceNumber(fileHandle);
-      deviceInfoData := GetDeviceInformation(deviceNumber, deviceInfoSet);
+      deviceInfoData := GetDeviceInformation(deviceNumber, ClassGUID, deviceInfoSet);
       //Getting device properties
       //Bus type is not applicable to volumes!!!
-      {
-      fBusType := TBusType(StrToInt(TDevice.GetDeviceProperty(deviceNumber,
+      fBusType := TBusType(StrToInt(GetDeviceProperty(deviceNumber.DeviceNumber,
         deviceInfoData, SPDRP_BUSNUMBER, deviceInfoSet)));
-      fCapabilities := TDeviceCapabilities(StrToInt(TDevice.GetDeviceProperty(deviceNumber,
-        deviceInfoData, SPDRP_CAPABILITIES, deviceInfoSet)));
-        }
+      fCapabilities := TDeviceCapabilities(StrToInt(GetDeviceProperty
+        (deviceNumber.DeviceNumber, deviceInfoData, SPDRP_CAPABILITIES, deviceInfoSet)));
       fClassGUID := ClassGUID;
-      fDescription := String(GetDeviceProperty(deviceNumber,
+      fDescription := String(GetDeviceProperty(deviceNumber.DeviceNumber,
         deviceInfoData, SPDRP_DEVICEDESC, deviceInfoSet));
-      fDeviceClassName := String(GetDeviceProperty(deviceNumber,
+      fDeviceClassName := String(GetDeviceProperty(deviceNumber.DeviceNumber,
         deviceInfoData, SPDRP_CLASS, deviceInfoSet));
       fDeviceInfoData := deviceInfoData;
-      fFriendlyName := String(GetDeviceProperty(deviceNumber,
+      fFriendlyName := String(GetDeviceProperty(deviceNumber.DeviceNumber,
         deviceInfoData, SPDRP_FRIENDLYNAME, deviceInfoSet));
-      fManufacturer := String(GetDeviceProperty(deviceNumber,
+      fManufacturer := String(GetDeviceProperty(deviceNumber.DeviceNumber,
         deviceInfoData, SPDRP_MFG, deviceInfoSet));
     finally
       CloseHandle(fileHandle);
+      SetupDiDestroyDeviceInfoList(deviceInfoSet);
     end;
   end; //else - success
   //SetupDiGetDeviceRegistryProperty(deviceInfoSet,deviceInfoData,SPDRP_CLASS

@@ -13,7 +13,6 @@ type
   TDeviceManager = class(TObject)
   private
     fEventHandlers: TList;
-    function GetLogicalDrives(const Volumes: TStrings): TStrings; //gets all logical drives in system
     function GetVolumes: TStrings;
     function FilterDevices(drivePath: PChar): boolean;
   protected
@@ -49,166 +48,32 @@ uses
 function TDeviceManager.FilterDevices(drivePath: PChar): boolean;
 var
   bufChar: TCharArray;
-  driveType: Cardinal;
 begin
   Result := false;
   //we check if this drive is removable or fixed
-  driveType := GetDriveTypeA(drivePath);
-  if (driveType = DRIVE_REMOVABLE) or (driveType = DRIVE_FIXED)
+  if GetDriveType(drivePath) = DRIVE_REMOVABLE
   then begin
-    QueryDosDevice(PChar(Copy(drivePath,1,2)),@bufChar[0],MAXCHAR);
-    //checking if the device is a floppy drive
-    if (Copy(bufChar,1,14) <> DEV_FLOPPY)
+    if QueryDosDevice(drivePath, @bufChar[0], MAXCHAR) = 0
     then begin
-      Result := true;
-    end;
-  end;
-end;
-
-
-{
-//This function gets all logical drives in system
-procedure TDeviceManager.GetLogicalDrives;
-const
-  charCount = 4; //four characters describe each drive, e.g.: c:\<null-term>
-var
-  drives: PAnsiChar; //buffer for driver strings
-  pDrives: Pointer; //pointer to the drives array
-  bufSize: DWORD; //size of buffer
-  i: integer; //counter
-  driveNumber: integer; //number of drives
-begin
-  //clearing the list
-  fLogicalDrives.Clear;
-  //here we get size needed for buffer
-  bufSize := GetLogicalDriveStrings(0,nil);
-  if bufSize<>0
-  then begin //everything is OK
-    drives := AllocMem(bufSize); //we alloc memory
-    pDrives := drives; //save pointer to the beginning of the array
-    GetLogicalDriveStrings(bufSize,drives);
-    driveNumber := (bufSize-1) div charCount; //we count the quantity of drives
-    for i := 1 to driveNumber do
-    begin
-      if FilterDevices(drives) //skipping floppies and CDROM's
-      then begin
-        fLogicalDrives.Add(drives);
-        //fDevices.Add(TDevice.Create(drives));
-      end; //filter
-      Inc(drives, charCount);  //move to the next list item
-    end; //drives
-    FreeMem(pDrives,bufSize); //we release resources
-  end //bufSize<>0
-  else begin
-    raise EDeviceException.Create('Initialization failed!');
-  end; //Raise
-end; //GetDrives
-}
-
-{
-//This function gets all logical drives in system
-procedure TDeviceManager.GetDrives;
-var
-  devInfo: THandle; //device info handle
-  devInfoData: TSPDevInfoData; //device info
-  devInterfaceData: TSPDeviceInterfaceData; //device interface info
-  devInterfaceDefailData: TSPDeviceInterfaceDetailData; //concrete info
-  i: integer; //counter
-  dwSize: Cardinal; //dummy integer
-begin
-  //First, we get all disk devices in the system. Then, we choose
-  //which are removable and then add them to the device list
-  devInfo := SetupDiGetClassDevsA(@GUID_DEVCLASS_DISKDRIVE, nil, HWND(nil),
-    DIGCF_PRESENT or DIGCF_DEVICEINTERFACE);
-  if devInfo = INVALID_HANDLE_VALUE
-  then begin
-  end //then
-  else begin
-    i := 0;
-    devInterfaceData.cbSize := sizeof(devInterfaceData);
-    while (SetupDiEnumDeviceInterfaces(devInfo,nil,GUID_DEVCLASS_DISKDRIVE,
-      i,devInterfaceData)) do
-    begin
-      inc(i);
-      SetupDiGetDeviceInterfaceDetailA(devInfo,@devInterfaceData,nil,0,dwSize,nil);
-      if dwSize = 0
-      then begin
-      end //fail
+      raise EDeviceException.Create(SysErrorMessage(GetLastError));
+    end //then - error
       else begin
-        devInfoData.cbSize := dwSize;
-        devInterfaceDefailData.cbSize := 5;
-        SetupDiGetDeviceInterfaceDetailA(devInfo,@devInterfaceData,
-          @devInterfaceDefailData,dwSize,dwSize,nil);
+      //checking if the device is a floppy drive
 
-          ////!!!!!!!!!!!Look for SafeRemove by Bagel
-          //// the previous works good
-
-      end;
-    end; //while
-  end; //else
-end; //GetDrives}
-
-
-function TDeviceManager.GetLogicalDrives(const Volumes: TStrings): TStrings;
-var
-  driveName: TCharArray;
-  pDriveName: PChar;
-  i: integer;
-  dummy: Cardinal; //for function
-  s: string;
-  size: integer;
-  handle: THandle;
-  buf: TVolumeDiskExtents;
-
-begin
-
-
-  for i := 0 to Volumes.Count-1 do
-  begin
-    s := Volumes.Strings[i];
-    s[3] := '.';
-    Delete(s,Length(s),1);
-    handle := CreateFile(PChar(s),GENERIC_READ, FILE_SHARE_READ
-      or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
-    if handle <> INVALID_HANDLE_VALUE
-    then begin
-      if DeviceIoControl(handle,IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS, nil,0,
-        @buf,sizeof(buf),dummy,nil)
+      {TODO: get DOS device name by its NT name}
+      if (Copy(bufChar,1,14) <> DEV_FLOPPY)
       then begin
-        dummy := buf.Extents[0].DiskNumber;
-      end;
-      CloseHandle(handle);
-    end;
-    {
-    if GetVolumePathNamesForVolumeNameA(PChar(Volumes.Strings[i]),
-      driveName, sizeof(driveName), dummy)
-    then begin
-      s := String(driveName);
-      pDriveName := @driveName;
-      size := 0;
-      while (s <> '') do
-      begin
-        inc(size, Length(s));
-        s := String(pDriveName + Length(s)+1);
-        //inc(driveName, Length(driveName));
-      end;
-      //FreeMem(pDriveName, size);
-    end //if-then
-    else begin
-      raise EDeviceException.Create(SysErrorMessage(GetLastError)); //
-      exit;
-    end;
-    }
-  end;
-end;
-
+        Result := true;
+      end; //then - not floppy
+    end; //else
+  end; //then - removable
+end; //FilterDevices
 
 //This function gets all
 function TDeviceManager.GetVolumes: TStrings;
 var
   volName: TCharArray; //name buffer
   handle: THandle; //handle of the first system volume
-  volList: TStringList; //list of all volumes
   i: integer; //counter
   s: string;
   device: TDevice;
@@ -232,7 +97,11 @@ begin
   for i := 0 to Result.Count-1 do
   begin
     s := result.Strings[i];
-    device := TVolume.Create(s);
+    if FilterDevices(PChar(s))
+    then begin
+      device := TVolume.Create(s);
+      device.Destroy;
+    end;
   end;
 end;
 
