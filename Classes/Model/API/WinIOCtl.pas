@@ -16,8 +16,7 @@ const
   VolumeMask = '\\.\' + DeviceMask;
   DrivePattern = '\\\\.\\PhysicalDrive%d';
   DEV_FLOPPY = '\Device\Floppy';
-  FLOPPY_DRIVE_1 = 'A';
-  FLOPPY_DRIVE_2 = 'B';
+  FLOPPY_DRIVE = '\\?\fdc#';
 
 type
   TCharArray = array [0..MAX_PATH] of char;
@@ -260,7 +259,7 @@ type
 
   //Drive Length information
   GET_LENGTH_INFORMATION = record
-    Length: integer;
+    Length: Int64;
   end;
 
   //info about serial number

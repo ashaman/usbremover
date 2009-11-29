@@ -81,7 +81,7 @@ UnsafeCode=0
 UnsafeCast=0
 [Linker]
 MapFile=0
-OutputObjs=0
+OutputObjs=30
 ConsoleApp=1
 DebugInfo=0
 RemoteSymbols=0
@@ -134,3 +134,6 @@ OriginalFilename=
 ProductName=
 ProductVersion=1.0.0.0
 Comments=
+[HistoryLists\hlUnitAliases]
+Count=1
+Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;

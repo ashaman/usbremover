@@ -14,7 +14,7 @@ type
   private
     fEventHandlers: TList;
     function GetVolumes: TStrings;
-    function FilterDevices(drivePath: PChar): boolean;
+    function FilterVolumes(drivePath: PChar): boolean;
   protected
     fDevices: TList;
     fLogicalDrives: TStringList;
@@ -42,30 +42,41 @@ type
 implementation
 
 uses
-  SysUtils, WMI, ShellObjExtended, Volume;
+  SysUtils, WMI, ShellObjExtended, Volume, StrUtils;
 
 //Filters only necessary devices which match the type criteria
-function TDeviceManager.FilterDevices(drivePath: PChar): boolean;
+function TDeviceManager.FilterVolumes(drivePath: PChar): boolean;
 var
-  bufChar: TCharArray;
+  bufChar: TCharArray; //char buffer
+  deviceMountPoint: string; //device first mount point
+  bufStr: TStrings; //strings buffer
 begin
   Result := false;
-  //we check if this drive is removable or fixed
+  bufStr := nil;
+  //we check if this drive is removable or not
   if GetDriveType(drivePath) = DRIVE_REMOVABLE
   then begin
-    if QueryDosDevice(drivePath, @bufChar[0], MAXCHAR) = 0
-    then begin
-      raise EDeviceException.Create(SysErrorMessage(GetLastError));
-    end //then - error
-      else begin
-      //checking if the device is a floppy drive
-
-      {TODO: get DOS device name by its NT name}
-      if (Copy(bufChar,1,14) <> DEV_FLOPPY)
+    try
+      bufStr := TVolume.GetVolumeMountPoints(drivePath);
+      deviceMountPoint := bufStr[0];
+      Delete(deviceMountPoint,Length(deviceMountPoint),1);
+      if QueryDosDevice(PChar(deviceMountPoint), PChar(@bufChar), sizeof(bufChar)) = 0
       then begin
-        Result := true;
-      end; //then - not floppy
-    end; //else
+        raise EDeviceException.Create(SysErrorMessage(GetLastError));
+      end //then - error
+      else begin
+        //checking if the device is a floppy drive
+        if (Copy(bufChar,1,14) <> DEV_FLOPPY)
+        then begin
+          Result := true;
+        end; //then - not floppy
+      end; //else - floppy
+    finally
+      if Assigned(bufStr)
+      then begin
+        bufStr.Destroy;
+      end;
+    end; //finally
   end; //then - removable
 end; //FilterDevices
 
@@ -77,30 +88,35 @@ var
   i: integer; //counter
   s: string;
   device: TDevice;
+  fList: TStringList;
 begin
   //we get the first volume in system
-  Result := TStringList.Create;
+  fList := TStringList.Create;
   handle := FindFirstVolumeA(volName,sizeof(volName));
   if handle = INVALID_HANDLE_VALUE
   then begin
     raise EDeviceException.Create(SysErrorMessage(GetLastError));
   end
   else begin
-    Result.Add(String(volName));
+    fList.Add(String(volName));
     //we get all other volumes
     while FindNextVolumeA(handle,volName,sizeof(volName)) do
     begin
-      Result.Add(String(volName));
+      fList.Add(String(volName));
     end;
     FindVolumeClose(handle);
   end;
-  for i := 0 to Result.Count-1 do
+  {TODO: Somewhere there's a leak of memory, so there's Invalid pointer operation}
+  for i := 0 to fList.Count-1 do
   begin
-    s := result.Strings[i];
-    if FilterDevices(PChar(s))
+    s := fList.Strings[i];
+    if FilterVolumes(PChar(s))
     then begin
       device := TVolume.Create(s);
-      device.Destroy;
+      try
+        device.Destroy;
+      except
+      end;
     end;
   end;
 end;

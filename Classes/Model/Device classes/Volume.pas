@@ -1,9 +1,10 @@
 {
   Class which describes device volume.
-
+}
+{
   TODO: add class function that allows to get physical location of the volume
   through IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS
-  
+
   //Retrieves the physical location of the specified volume on one or more disks. 
 }
 
@@ -23,11 +24,12 @@ type
     fVolumeSize: Int64; //volume size
     fVolumeFileSystemType: string; //volume file system type
     procedure GetVolumeInfo; //gets volume information
-    procedure GetVolumeMountPoints(Path: String); //gets volume mount points
-    //getters
+    function GetVolumeSize(Path: string): Int64; //gets volume size
   public
     constructor Create(Path: string);
     destructor Destroy; override;
+
+    class function GetVolumeMountPoints(Path: String): TStringList; //gets volume mount points
     //properties
     property VolumeLabel: string read fVolumeLabel;
     property VolumeID: Cardinal read fVolumeID;
@@ -41,6 +43,37 @@ implementation
 uses
   WinIOCtl, Windows, DeviceException, SysUtils, WMI, ShellObjExtended;
 
+//This function gets volume size 
+function TVolume.GetVolumeSize(Path: string): Int64;
+var
+  bytesReturned: Cardinal; //bytes returned by the function
+  lengthInfo: GET_LENGTH_INFORMATION; //length information
+  handle: THandle; //file handle
+begin
+  Result := 0;
+  handle := CreateFile(PChar(Path),GENERIC_READ, FILE_SHARE_READ or
+    FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
+  if handle = INVALID_HANDLE_VALUE
+  then begin
+    raise EDeviceException.Create(SysErrorMessage(GetLastError));
+  end //then - failed to open file
+  else begin
+    try
+      //getting volume length
+      if not DeviceIoControl(handle,IOCTL_DISK_GET_LENGTH_INFO,
+        nil, 0, @lengthInfo, sizeof(lengthInfo), bytesReturned, nil)
+      then begin
+        raise EDeviceException.Create(SysErrorMessage(GetLastError));
+      end //then - getting failed
+      else begin
+        Result := lengthInfo.Length;
+      end; //else - got length
+    finally
+      CloseHandle(handle);
+    end;
+  end; //else - file opened
+end; //GetVolumeSize
+
 //Gets volume info through WinAPI function GetVolumeInformation
 procedure TVolume.GetVolumeInfo;
 var
@@ -48,12 +81,12 @@ var
   FileSystemNameBuf: TCharArray; //buffer for file system name
   Success: LongBool; //indicates if a function call was successful
   ReturnedBytes: Cardinal; //buffer for returned bytes
-  FSFlags: Cardinal; //File system flags set for device
+  FSFlags: Cardinal; //file system flags set for device
 begin
   //Getting volume information
   Success := GetVolumeInformation(PChar(fVolumeRootDirectories.Strings[0]),
-    VolumeNameBuf, MAX_PATH, @fVolumeID, ReturnedBytes, FSFlags,
-    FileSystemNameBuf, MAX_PATH);
+    VolumeNameBuf, sizeof(VolumeNameBuf), @fVolumeID, ReturnedBytes, FSFlags,
+    FileSystemNameBuf, sizeof(FileSystemNameBuf));
   if not Success
   then begin
     raise EDeviceException.Create(SysErrorMessage(GetLastError));
@@ -61,34 +94,29 @@ begin
   else begin
     //setting volume label, FS type and size
     fVolumeLabel := String(VolumeNameBuf);
-    fVolumeFileSystemType := String(@FileSystemNameBuf);
-    fVolumeSize := DiskSize(ord(fVolumeRootDirectories.Strings[0][1])
-      -ord(FLOPPY_DRIVE_1)+1);
+    fVolumeFileSystemType := String(FileSystemNameBuf);
   end;
 end;
 
 //Gets volume mount points using SetupAPI
-procedure TVolume.GetVolumeMountPoints(Path: String);
+class function TVolume.GetVolumeMountPoints(Path: String): TStringList;
 var
   driveMountPoint: TCharArray; //buffer for the volume mount point name
-  returnedLength: Cardinal; //dummy integer
+  numPoints: Cardinal; //count of chars in mount points array
   pDriveMountPoint: PChar; //PChar buffer
-  position: integer;
 begin
   //creating string list
-  fVolumeRootDirectories := TStringList.Create;
+  Result := TStringList.Create;
+  numPoints := 0;
   //Getting volume mount points
   if GetVolumePathNamesForVolumeNameA(PChar(Path),
-    PChar(@driveMountPoint), sizeof(driveMountPoint), returnedLength)
+    PChar(@driveMountPoint), sizeof(driveMountPoint), numPoints)
   then begin
-    pDriveMountPoint := PChar(@driveMountPoint[0]);
-    position := 0;
-    //getting all drive mount points
-    while (pDriveMountPoint <> '') do
+    pDriveMountPoint := PChar(@driveMountPoint);
+    while (pDriveMountPoint[0] <> #0) do
     begin
-      fVolumeRootDirectories.Add(pDriveMountPoint);
-      Inc(position, Length(pDriveMountPoint));
-      pDriveMountPoint := PChar(@driveMountPoint[position]);
+      Result.Add(pDriveMountPoint);
+      Inc(pDriveMountPoint, Length(pDriveMountPoint)+1); //+1 because of the #0
     end;
   end //then
   else begin
@@ -100,14 +128,20 @@ end; //GetVolumeMountPoints
 constructor TVolume.Create(Path: string);
 begin
   inherited Create(GUID_DEVINTERFACE_VOLUME, Path);
-  GetVolumeMountPoints(Path);
+  fVolumeRootDirectories := GetVolumeMountPoints(Path);
+  fVolumeSize := GetVolumeSize(fPath);
   GetVolumeInfo;
 end;
 
 //Destructor
 destructor TVolume.Destroy;
 begin
+  if Assigned(fVolumeRootDirectories)
+  then begin
+    fVolumeRootDirectories.Free;
+  end;
   inherited Destroy;
 end;
 
 end.
+

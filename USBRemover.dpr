@@ -16,7 +16,8 @@ uses
   WMI in 'Classes\Model\API\WMI.pas',
   Volume in 'Classes\Model\Device classes\Volume.pas',
   ShellObjExtended in 'Classes\Model\API\ShellObjExtended.pas',
-  Device in 'Classes\Model\Device classes\Device.pas';
+  Device in 'Classes\Model\Device classes\Device.pas',
+  Drive in 'Classes\Model\Device classes\Drive.pas';
 
 {$R *.res}
 begin
