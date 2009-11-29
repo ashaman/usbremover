@@ -43,6 +43,7 @@ var
   err: string;
 begin
   inherited Create;
+  {
   volumes := TStringList.Create;
   for i := 0 to fLogicalDrives.Count-1 do
   begin
@@ -59,6 +60,7 @@ begin
       end;
     end;
   end;
+  }
 end;
 
 //Overriden destructor

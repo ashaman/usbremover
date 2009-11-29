@@ -1,6 +1,6 @@
 del *.dcu /s
 del *.ppu /s
-del *.o /s
+del *.obj /s
 del *.~* /s
 del *.dsk /s
 del *.bk? /s
