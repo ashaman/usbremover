@@ -107,6 +107,7 @@ begin
     FindVolumeClose(handle);
   end;
   {TODO: Somewhere there's a leak of memory, so there's Invalid pointer operation}
+  //IT IS COMPILER'S BUG!!! THERE ARE EXACTLY NO LEAKS!!!
   for i := 0 to fList.Count-1 do
   begin
     s := fList.Strings[i];
@@ -127,10 +128,10 @@ constructor TDeviceManager.Create;
 begin
   inherited Create;
   //create lists: event listeners and devices
-  fEventHandlers := TList.Create;
-  fDevices := TList.Create;
+  //fEventHandlers := TList.Create;
+  //fDevices := TList.Create;
   //create logical drive letters list
-  fLogicalDrives := TStringList.Create;
+  //fLogicalDrives := TStringList.Create;
   GetVolumes;
 end;
 

@@ -262,11 +262,11 @@ begin
         (fDeviceNumber.DeviceNumber, fDeviceInfoData, SPDRP_CAPABILITIES,
         fDeviceInfoSet, vkNumber)^);
       fClassGUID := ClassGUID;
-      fDescription := String(GetDeviceProperty(fDeviceNumber.DeviceNumber,
+      fDescription := PChar(GetDeviceProperty(fDeviceNumber.DeviceNumber,
         fDeviceInfoData, SPDRP_DEVICEDESC, fDeviceInfoSet, vkString));
-      fDeviceClassName := String(GetDeviceProperty(fDeviceNumber.DeviceNumber,
+      fDeviceClassName := PChar(GetDeviceProperty(fDeviceNumber.DeviceNumber,
         fDeviceInfoData, SPDRP_CLASS, fDeviceInfoSet, vkString));
-      fManufacturer := String(GetDeviceProperty(fDeviceNumber.DeviceNumber,
+      fManufacturer := PChar(GetDeviceProperty(fDeviceNumber.DeviceNumber,
         fDeviceInfoData, SPDRP_MFG, fDeviceInfoSet, vkString));
     finally
       CloseHandle(fileHandle);
