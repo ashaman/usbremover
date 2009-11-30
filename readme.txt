@@ -31,3 +31,6 @@ Some problems occured when I found out that on my telephone there are two separa
 
 23:46 24.11.2009
 Ok, the development is in progress... I hope we'll finish the model until the end of this week...
+
+0:24 30.11.2009
+F**king Delphi 7 compiler has a great bug!!! It detects that our program has a leak in its memory... but there's exactly no leaks and no access violations!!!!!!!
