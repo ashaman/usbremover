@@ -83,6 +83,12 @@ var
   ReturnedBytes: Cardinal; //buffer for returned bytes
   FSFlags: Cardinal; //file system flags set for device
 begin
+{
+	TODO: PChar casting is done like this:
+	PCh := @str[1]; 
+	// not C-like casting!!!
+}
+
   //Getting volume information
   Success := GetVolumeInformation(PChar(fVolumeRootDirectories.Strings[0]),
     VolumeNameBuf, sizeof(VolumeNameBuf), @fVolumeID, ReturnedBytes, FSFlags,
