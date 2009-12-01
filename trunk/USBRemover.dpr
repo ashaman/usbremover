@@ -17,7 +17,8 @@ uses
   Volume in 'Classes\Model\Device classes\Volume.pas',
   ShellObjExtended in 'Classes\Model\API\ShellObjExtended.pas',
   Device in 'Classes\Model\Device classes\Device.pas',
-  Drive in 'Classes\Model\Device classes\Drive.pas';
+  Drive in 'Classes\Model\Device classes\Drive.pas',
+  USBDevice in 'Classes\Model\Device classes\USBDevice.pas';
 
 {$R *.res}
 begin

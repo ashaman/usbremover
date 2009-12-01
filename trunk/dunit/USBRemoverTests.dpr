@@ -11,11 +11,17 @@ uses
   Forms,
   GUITestRunner {$ENDIF},
   TextTestRunner,
-  DeviceTests in 'DeviceTests.pas',
   Device in '..\Classes\Model\Device classes\Device.pas',
+  Volume in '..\Classes\Model\Device classes\Volume.pas',
+  Drive in '..\Classes\Model\Device classes\Drive.pas',
   WinIOCtl in '..\Classes\Model\API\WinIOCtl.pas',
   WMI in '..\Classes\Model\API\WMI.pas',
-  DeviceException in '..\Classes\Model\Exceptions\DeviceException.pas';
+  DeviceException in '..\Classes\Model\Exceptions\DeviceException.pas',
+  DeviceManager in '..\Classes\Model\Device managers\DeviceManager.pas',
+  ShellObjExtended in '..\Classes\Model\API\ShellObjExtended.pas',
+  USBManagerTests in '..\Classes\Model\Device managers\dunit\USBManagerTests.pas',
+  USBManager in '..\Classes\Model\Device managers\USBManager.pas',
+  USBDevice in '..\Classes\Model\Device classes\USBDevice.pas';
 
 {$R *.RES}
 

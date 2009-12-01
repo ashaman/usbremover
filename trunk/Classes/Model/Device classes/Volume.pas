@@ -1,13 +1,7 @@
 {
   Class which describes device volume.
+  Developed by J.L.Blackrow
 }
-{
-  TODO: add class function that allows to get physical location of the volume
-  through IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS
-
-  //Retrieves the physical location of the specified volume on one or more disks. 
-}
-
 unit Volume;
 
 interface
@@ -18,19 +12,24 @@ uses
 type
   TVolume = class(TDevice)
   private
+    fDiskNumbers: TList; //disk numbers where volume is mounted
     fVolumeLabel: string; //volume label
     fVolumeID: Cardinal; //volume numeric ID
     fVolumeRootDirectories: TStringList; //volume root directory
     fVolumeSize: Int64; //volume size
     fVolumeFileSystemType: string; //volume file system type
+    function GetDiskCount: Cardinal; //disk count
+    function GetDiskNumbers(Path: string): TList; //<Cardinal> - gets volume disk numbers
     procedure GetVolumeInfo; //gets volume information
     function GetVolumeSize(Path: string): Int64; //gets volume size
   public
     constructor Create(Path: string);
     destructor Destroy; override;
-
+    procedure NotifySystem; override;
     class function GetVolumeMountPoints(Path: String): TStringList; //gets volume mount points
     //properties
+    property VolumeDiskCount: Cardinal read GetDiskCount;
+    property VolumeDiskNumbers: TList read fDiskNumbers;
     property VolumeLabel: string read fVolumeLabel;
     property VolumeID: Cardinal read fVolumeID;
     property VolumeRootDirectories: TStringList read fVolumeRootDirectories;
@@ -41,9 +40,63 @@ type
 implementation
 
 uses
-  WinIOCtl, Windows, DeviceException, SysUtils, WMI, ShellObjExtended;
+  WinIOCtl, Windows, DeviceException, SysUtils, WMI, ShellObjExtended, ShlObj;
 
-//This function gets volume size 
+//This function hets total disk count where this volume is mounted
+function TVolume.GetDiskCount: Cardinal;
+begin
+  Result := fDiskNumbers.Count;
+end;
+
+//This function gets disk numbers where this volume is mounted
+function TVolume.GetDiskNumbers(Path: string): TList;
+var
+  handle: THandle; //file handle
+  dummy: Cardinal; //bytes returned by function
+  diskExtents: TVolumeDiskExtents; //volume-disk extents
+  i: integer; //loop index
+begin
+  Result := nil;
+  handle := CreateFile(PChar(@Path[1]), GENERIC_READ, FILE_SHARE_READ or
+    FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
+  if handle = INVALID_HANDLE_VALUE
+  then begin
+    raise EDeviceException.Create(SysErrorMessage(GetLastError));
+  end //then - opening failed
+  else begin
+    try
+      //getting volume extents
+      if not DeviceIoControl(handle, IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS,
+        nil, 0, @diskExtents, sizeof(diskExtents), dummy, nil)
+      then begin
+        raise EDeviceException.Create(SysErrorMessage(GetLastError));
+      end //then - error occured
+      else begin
+        Result := TList.Create;
+        for i := 0 to diskExtents.NumberOfDiskExtents-1 do
+        begin
+          Result.Add(@diskExtents.Extents[i].DiskNumber);
+        end; //adding disk numbers
+      end; //else
+    finally
+      CloseHandle(handle);
+    end; //finally
+  end; //else - opened successfully
+end; //GetDiskNumbers
+
+//This function notifies the OS about the volume removal
+procedure TVolume.NotifySystem;
+var
+  i: integer; //loop index
+begin
+  for i := 0 to fVolumeRootDirectories.Count-1 do
+  begin
+    SHChangeNotify(SHCNE_MEDIAREMOVED, SHCNF_PATH,
+      @fVolumeRootDirectories.Strings[i][1], nil);
+  end;
+end;
+
+//This function gets volume size
 function TVolume.GetVolumeSize(Path: string): Int64;
 var
   bytesReturned: Cardinal; //bytes returned by the function
@@ -51,7 +104,7 @@ var
   handle: THandle; //file handle
 begin
   Result := 0;
-  handle := CreateFile(PChar(Path),GENERIC_READ, FILE_SHARE_READ or
+  handle := CreateFile(PChar(@Path[1]),GENERIC_READ, FILE_SHARE_READ or
     FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
   if handle = INVALID_HANDLE_VALUE
   then begin
@@ -83,14 +136,8 @@ var
   ReturnedBytes: Cardinal; //buffer for returned bytes
   FSFlags: Cardinal; //file system flags set for device
 begin
-{
-	TODO: PChar casting is done like this:
-	PCh := @str[1]; 
-	// not C-like casting!!!
-}
-
   //Getting volume information
-  Success := GetVolumeInformation(PChar(fVolumeRootDirectories.Strings[0]),
+  Success := GetVolumeInformation(PChar(@fVolumeRootDirectories.Strings[0][1]),
     VolumeNameBuf, sizeof(VolumeNameBuf), @fVolumeID, ReturnedBytes, FSFlags,
     FileSystemNameBuf, sizeof(FileSystemNameBuf));
   if not Success
@@ -100,6 +147,7 @@ begin
   else begin
     //setting volume label, FS type and size
     fVolumeLabel := String(VolumeNameBuf);
+    fFriendlyName := fVolumeLabel;
     fVolumeFileSystemType := String(FileSystemNameBuf);
   end;
 end;
@@ -115,10 +163,10 @@ begin
   Result := TStringList.Create;
   numPoints := 0;
   //Getting volume mount points
-  if GetVolumePathNamesForVolumeNameA(PChar(Path),
+  if GetVolumePathNamesForVolumeNameA(PChar(@Path[1]),
     PChar(@driveMountPoint), sizeof(driveMountPoint), numPoints)
   then begin
-    pDriveMountPoint := PChar(@driveMountPoint);
+    pDriveMountPoint := PChar(@driveMountPoint[0]);
     while (pDriveMountPoint[0] <> #0) do
     begin
       Result.Add(pDriveMountPoint);
@@ -136,6 +184,7 @@ begin
   inherited Create(GUID_DEVINTERFACE_VOLUME, Path);
   fVolumeRootDirectories := GetVolumeMountPoints(Path);
   fVolumeSize := GetVolumeSize(fPath);
+  fDiskNumbers := GetDiskNumbers(fPath);
   GetVolumeInfo;
 end;
 
@@ -150,4 +199,7 @@ begin
 end;
 
 end.
+
+
+
 

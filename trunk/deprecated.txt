@@ -1,54 +1,3 @@
-{Gets device description from STORAGE_DEVICE_DESCRIPTOR structure}
-procedure TDevice.GetAPIDeviceDescription(fHandle: THandle);
-var
-  DeviceDescriptor: STORAGE_DEVICE_DESCRIPTOR; {system device descriptor}
-  ReturnedBytes: DWORD; {buffer for returned bytes}
-  PropQuery: STORAGE_PROPERTY_QUERY; {property query}
-  Success: LongBool; {indicates if a function call was successful}
-  //hDev: THandle; {}
-  DskSize: GET_LENGTH_INFORMATION;
-begin
-    //zero memofy for pointers
-    ZeroMemory(@PropQuery, sizeof(PropQuery));
-    ZeroMemory(@DeviceDescriptor, sizeof(DeviceDescriptor));
-    //getting size of structure
-    DeviceDescriptor.Size := sizeof(DeviceDescriptor);
-    //we call DeviceIOControl to get info about the device
-    //Returned bytes has no meaning in this case
-    Success := DeviceIoControl(fHandle,IOCTL_STORAGE_QUERY_PROPERTY,@PropQuery,
-      sizeof(PropQuery), @DeviceDescriptor, DeviceDescriptor.Size,
-      ReturnedBytes, nil);
-    if not Success
-    then begin
-      raise EDeviceException.Create(SysErrorMessage(GetLastError));
-    end {exception - no such device}
-    else begin
-      if (DeviceDescriptor.BusType = BusTypeUnknown) or
-        (DeviceDescriptor.BusType = BusTypeMaxReserved)
-      then begin
-        raise EDeviceException.Create(SysErrorMessage(GetLastError)); //unknown bus type
-      end {unknown bus type}
-      else begin
-        {Converting bus type to TBusType}
-        fDeviceBusType := TDevice.StorageBusTypeToTBusType(DeviceDescriptor.BusType);
-        {Getting vendor ID
-        fVendorID := self.APICharArrayToPChar(DeviceDescriptor,
-          DeviceDescriptor.VendorIdOffset);}
-        {Getting product revision
-        fProductRevision := self.APICharArrayToPChar(DeviceDescriptor,
-          DeviceDescriptor.ProductRevisionOffset);}
-        {Getting product ID
-        fProductID := self.APICharArrayToPChar(DeviceDescriptor,
-          DeviceDescriptor.ProductIdOffset);}
-      end;
-    end;
-    ZeroMemory(@PropQuery, sizeof(PropQuery));
-    ZeroMemory(@DeviceDescriptor, sizeof(DeviceDescriptor));
-end;
-
-
-
-
 //This function gets device serial number
 function TDevice.GetAPISerialNumber(devNumber: Cardinal): PChar;
 var
@@ -85,21 +34,6 @@ begin
     end; //exception supression
   end; //finally
 end;
-
-{Converts char arrays to PChar}
-function TDevice.APICharArrayToPChar(DeviceDescriptor: STORAGE_DEVICE_DESCRIPTOR;
-  offset: Cardinal): PChar;
-var
-  buf: PChar; {string for buffer}
-begin
-  Result := '';
-  if offset <> 0
-  then begin
-    buf := @PCharArray(@DeviceDescriptor)^[offset];
-    Result := PChar(Trim(buf));
-  end;
-end;
-
 
 //Converts integer codes to TBusType enumeration
 class function TDevice.StorageBusTypeToTBusType(sBusType: STORAGE_BUS_TYPE): TBusType;
@@ -160,68 +94,6 @@ begin
     end; //Raise
   }
 end; //GetDrives
-
-
-//In this function we get the specified device information by its instance handle
-//We get all the devices of the specified class and get one of them
-class function TDevice.GetDeviceInformation(InstanceHandle: THandle; DeviceInfoSet: THandle):
-  TDeviceInfoData;
-var
-  buffer: TCharArray; //string buffer
-begin
-  //get the specified device ID
-  if (CM_Get_Device_IDA(InstanceHandle,@buffer,sizeof(buffer),0) <> 0)
-  then begin
-    raise EDeviceException.Create(SysErrorMessage(GetLastError));
-  end //then
-  else begin
-    //open the specified device information
-    if not SetupDiOpenDeviceInfoA(DeviceInfoSet, PChar(@buffer), 0, 0, @Result)
-    then begin
-      raise EDeviceException.Create(SysErrorMessage(GetLastError));
-    end; //then
-  end; //else
-end; //GetDeviceInformation
-
-
-{
-//This function gets all logical drives in system
-procedure TDeviceManager.GetLogicalDrives;
-const
-  charCount = 4; //four characters describe each drive, e.g.: c:\<null-term>
-var
-  drives: PAnsiChar; //buffer for driver strings
-  pDrives: Pointer; //pointer to the drives array
-  bufSize: DWORD; //size of buffer
-  i: integer; //counter
-  driveNumber: integer; //number of drives
-begin
-  //clearing the list
-  fLogicalDrives.Clear;
-  //here we get size needed for buffer
-  bufSize := GetLogicalDriveStrings(0,nil);
-  if bufSize<>0
-  then begin //everything is OK
-    drives := AllocMem(bufSize); //we alloc memory
-    pDrives := drives; //save pointer to the beginning of the array
-    GetLogicalDriveStrings(bufSize,drives);
-    driveNumber := (bufSize-1) div charCount; //we count the quantity of drives
-    for i := 1 to driveNumber do
-    begin
-      if FilterDevices(drives) //skipping floppies and CDROM's
-      then begin
-        fLogicalDrives.Add(drives);
-        //fDevices.Add(TDevice.Create(drives));
-      end; //filter
-      Inc(drives, charCount);  //move to the next list item
-    end; //drives
-    FreeMem(pDrives,bufSize); //we release resources
-  end //bufSize<>0
-  else begin
-    raise EDeviceException.Create('Initialization failed!');
-  end; //Raise
-end; //GetDrives
-}
 
 {
 //This function gets all logical drives in system
@@ -496,3 +368,100 @@ begin
     end;
   end;
 end;
+
+  {
+  DeviceInfo.cbSize := sizeof(SP_DEVINFO_DATA);
+  DrivesPnpHandle := SetupDiGetClassDevsA(@GUID_DEVCLASS_DISKDRIVE, nil,
+    HWND(nil), DIGCF_PRESENT);
+  try
+    if DrivesPnpHandle = INVALID_HANDLE_VALUE
+    then begin
+      raise EDeviceException.Create(SysErrorMessage(GetLastError));
+    end //invalid handle
+    else begin
+      //works improperly too
+      if not SetupDiEnumDeviceInfo(DrivesPnpHandle,device.DeviceNumber,DeviceInfo)
+      then begin
+        raise EDeviceException.Create(SysErrorMessage(GetLastError));
+      end //end error SetupDiEnum...
+      else begin
+        if CM_Get_Parent(Parent, DeviceInfo.DevInst, 0) = CR_SUCCESS
+        then begin
+          CM_Request_Device_EjectA(Parent,nil,@VetoName,MAX_PATH,0);
+          if VetoName = ''
+          then begin
+            for i := 0 to device.DeviceNumberOfPartitions-1 do
+            begin
+            end;
+            //AIIIIO! AIO YOI O?OUUUU!!!!
+            //TODO: Refactor this code and add BlockedFiles search
+                  //Check if there's any possibility to switch on
+                  //disconnected device
+
+            //SHChangeNotify(SHCNE_MEDIAREMOVED,SHCNF_PATH,device.Path,nil);
+          end
+          else begin
+          end;
+        end; //end CM_GET_PARENT
+      end; //end SetupDiEnum...
+    end; //valid handle
+  finally
+    SetupDiDestroyDeviceInfoList(DrivesPnpHandle);
+  end;              }
+
+
+{
+  WARINING: OLD VERSION. DOES NOT INFORM WINDOWS PROPERLY
+
+  !!!uses ShlObj, ShellAPI
+
+//Main method for drive removal
+procedure TUSBManager.RemoveDrive(device: TDevice);
+var
+  Success: LongBool;
+  i: integer;
+  ReturnedBytes: DWORD;
+  PreventFlag: PREVENT_MEDIA_REMOVAL;
+  fHandle: THandle;
+begin
+  for i := 0 to MAX_ATTEMPTS-1 do
+  begin
+    //here we try to lock the volume
+    Success := DeviceIoControl(fHandle, FSCTL_LOCK_VOLUME, nil, 0, nil, 0,
+      ReturnedBytes, nil);
+    if not Success
+    then begin
+      if i = MAX_ATTEMPTS-1
+      then begin
+        raise EDeviceException.Create(SysErrorMessage(GetLastError)); //access
+      end //no more attempts left                                    //denied!
+      else begin
+        Sleep(2000);
+        continue;
+      end; //skip the iteration
+    end //not successful
+    else begin
+      //clear the memory
+      ZeroMemory(@PreventFlag, sizeof(PreventFlag));
+      //we dismount the volume...
+      DeviceIoControl(fHandle,FSCTL_DISMOUNT_VOLUME, nil, 0, nil, 0,
+        ReturnedBytes, nil);
+      //then, we enable volume ejection mechanism...
+      DeviceIoControl(fHandle,IOCTL_STORAGE_MEDIA_REMOVAL,@PreventFlag,
+        sizeof(PreventFlag),nil,0,ReturnedBytes,nil);
+      //after, we eject the volume...
+      DeviceIoControl(fHandle,IOCTL_STORAGE_EJECT_MEDIA, nil, 0, nil, 0,
+        ReturnedBytes,nil);
+      //...and finally we release the device
+      DeviceIoControl(fHandle,FSCTL_UNLOCK_VOLUME,nil,0,nil,0,
+        ReturnedBytes,nil);
+      //...notify system about device removal..
+      SHChangeNotify(SHCNE_MEDIAREMOVED,SHCNF_PATH,device.Path,nil);
+      //and release all resources
+      device.Destroy;
+      fDevices.Pack;
+      break;
+    end; //successful
+  end;
+end;
+}

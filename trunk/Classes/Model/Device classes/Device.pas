@@ -30,14 +30,15 @@ type
     fDescription: string; //device description string
     fDeviceClassName: string; //class name
     fManufacturer: string; //device manufacturer
-
-    function GetDeviceInformation(DeviceNumber: TStorageDeviceNumber;
-      ClassGUID: TGUID; DeviceInfoSet: THandle): TDeviceInfoData;
-    function GetDeviceInformationSet(ClassGUID: TGUID): THandle;
-    function GetDeviceNumber(FileHandle: THandle): TStorageDeviceNumber;
-
     function GetChild(index: integer): TDevice;
     function GetCount: integer;
+    procedure GetSetupAPIInforamtion(ClassGUID: TGUID);
+    function GetDeviceInformation(DeviceNumber: TStorageDeviceNumber;
+      ClassGUID: TGUID; DeviceInfoSet: THandle): TDeviceInfoData; overload;
+    function GetDeviceInformation(InstanceHandle: THandle;
+      DeviceInfoSet: THandle): TDeviceInfoData; overload;
+    function GetDeviceInformationSet(ClassGUID: TGUID): THandle;
+    function GetDeviceNumber(FileHandle: THandle): TStorageDeviceNumber;
     function GetInstanceHandle: THandle;
     function GetPropertyBufferSize(ValueKind: TValueKind): Cardinal;
   protected
@@ -48,13 +49,17 @@ type
     fDeviceNumber: TStorageDeviceNumber; //device number
     fFriendlyName: string; //device full name
     fParent: TDevice; //parent device of the object. If it is not removable - is null
-    fPath: string; //device path
-    function GetDeviceProperty(DeviceNumber: Cardinal; DeviceInformation: TDeviceInfoData;
+    fPath: string; //device path (full)
+    function GetBusType(Path: string): TBusType;
+    function GetDeviceProperty(DeviceInformation: TDeviceInfoData;
       PropertyCode: integer; DeviceInfoSet: THandle; ValueKind: TValueKind): PByte;
     function FormatDevicePath(const Path: string): string;
-    constructor Create(ClassGUID: TGUID; Path: string);
+    constructor Create(ClassGUID: TGUID; Path: string); overload;
+    constructor Create(ClassGUID: TGUID; InstanceHandle: Cardinal); overload;
   public
     destructor Destroy; override;
+    procedure NotifySystem; virtual;
+    procedure AddChild(Device: TDevice);
     property BusType: TBusType read fBusType;
     property Capabilities: TDeviceCapabilities read fCapabilities;
     property Children [index: integer]: TDevice read GetChild;
@@ -73,6 +78,13 @@ implementation
 uses
   Windows, DeviceException, SysUtils;
 
+//This procedure adds a new device to children list
+procedure TDevice.AddChild(Device: TDevice);
+begin
+  Device.fParent := self;
+  fChildren.Add(Device);
+end; //AddChild
+
 //This function returns the total count of child devices
 function TDevice.GetCount: integer;
 begin
@@ -82,13 +94,24 @@ end; //GetCount
 //This function gets the child of this device specified by index
 function TDevice.GetChild(index: integer): TDevice;
 begin
-  Result := TDevice(fChildren.Items[index]^);
+  Result := TDevice(fChildren.Items[index]);
 end; //GetChild
 
 //This function gets device instance handle
 function TDevice.GetInstanceHandle: THandle;
 begin
   Result := fDeviceInfoData.DevInst;
+end;
+
+//This function notifies the OS about the device removal
+procedure TDevice.NotifySystem;
+var
+  i: integer; //loop index
+begin
+  for i := 0 to fChildren.Count-1 do
+  begin
+    TDevice(fChildren.Items[i]).NotifySystem;
+  end;
 end;
 
 //Formats the device path for opening it as file
@@ -145,17 +168,18 @@ begin
 end; //GetPropertyBuffer
 
 //This function returns the property specified by its control code
-function TDevice.GetDeviceProperty(DeviceNumber: Cardinal;
-  DeviceInformation: TDeviceInfoData; PropertyCode: integer;
-  DeviceInfoSet: THandle; ValueKind: TValueKind): PByte;
+function TDevice.GetDeviceProperty(DeviceInformation: TDeviceInfoData;
+  PropertyCode: integer; DeviceInfoSet: THandle; ValueKind: TValueKind): PByte;
 var
   dummy: Cardinal; //variable for the function call
   dataType: Cardinal; //registry data type
+  bufferSize: Cardinal; //buffer size
 begin
-  Result := AllocMem(GetPropertyBufferSize(ValueKind));
+  bufferSize := GetPropertyBufferSize(ValueKind);
+  Result := AllocMem(bufferSize);
   //getting device property
   if not SetupDiGetDeviceRegistryProperty(DeviceInfoSet, DeviceInformation, PropertyCode,
-    dataType, Result, GetPropertyBufferSize(ValueKind), dummy)
+    dataType, Result, bufferSize, dummy)
   then begin
     raise EDeviceException.Create(SysErrorMessage(GetLastError));
   end;
@@ -191,6 +215,7 @@ begin
   i := 0;
   found := false;
   deviceInterfaceData.cbSize := sizeof(deviceInterfaceData);
+  deviceInterfaceData.InterfaceClassGuid := ClassGUID;
   //enumeration device interfaces
   while (SetupDiEnumDeviceInterfaces(DeviceInfoSet, nil, ClassGUID, i,
     deviceInterfaceData)) and (not found) do
@@ -198,6 +223,7 @@ begin
     //preparations for function call
     deviceData.cbSize := sizeof(deviceData);
     deviceInterfaceDetailData.cbSize := 5;
+    bufSize := sizeof(deviceInterfaceDetailData);
     //getting device number
     if not SetupDiGetDeviceInterfaceDetailA(DeviceInfoSet, @deviceInterfaceData,
       @deviceInterfaceDetailData, bufSize, dwSize, @deviceData)
@@ -206,10 +232,10 @@ begin
     end //then - exception
     else begin
       //check if this is a floppy drive
-      if Pos(FLOPPY_DRIVE,deviceInterfaceDetailData.DevicePath) <> 1
+      if Pos(FLOPPY_DRIVE, deviceInterfaceDetailData.DevicePath) <> 1
       then begin
         //opening device as file
-        fHandle := CreateFile(PChar(@deviceInterfaceDetailData.DevicePath),
+        fHandle := CreateFile(PChar(@deviceInterfaceDetailData.DevicePath[0]),
           GENERIC_READ, FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
         if fHandle = INVALID_HANDLE_VALUE
         then begin
@@ -235,6 +261,83 @@ begin
   end; //while
 end; //GetDeviceInformation
 
+//This function gets bus type of the specified device
+function TDevice.GetBusType(Path: string): TBusType;
+var
+  handle: THandle; //file handle
+  deviceDescriptor: STORAGE_DEVICE_DESCRIPTOR; //device descriptor
+  dummy: Cardinal; //bytes returned by function
+  propertyQuery: STORAGE_PROPERTY_QUERY; //property query
+begin
+  Result := BusTypeUnknown;
+  handle := CreateFile(PChar(@Path[1]),GENERIC_READ, FILE_SHARE_READ or
+    FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
+  if handle = INVALID_HANDLE_VALUE
+  then begin
+    raise EDeviceException.Create(SysErrorMessage(GetLastError));
+  end //then - failed
+  else begin
+    try
+      ZeroMemory(@deviceDescriptor, sizeof(deviceDescriptor));
+      ZeroMemory(@propertyQuery, sizeof(propertyQuery));
+      deviceDescriptor.Size := sizeof(deviceDescriptor);
+      //we call DeviceIOControl to get info about the device
+      if not DeviceIoControl(handle, IOCTL_STORAGE_QUERY_PROPERTY, @propertyQuery,
+        sizeof(propertyQuery), @deviceDescriptor, sizeof(deviceDescriptor),
+        dummy, nil)
+      then begin
+        raise EDeviceException.Create(SysErrorMessage(GetLastError));
+      end //then - failed to get information
+      else begin
+        Result := deviceDescriptor.BusType;
+      end; //else - got device bus type
+    finally
+      CloseHandle(handle);
+    end; //finally
+  end; //else - successfully opened file
+end; //GetBusType
+
+//This function gets the device information by its instance handle in the device
+//information set
+function TDevice.GetDeviceInformation(InstanceHandle: THandle;
+      DeviceInfoSet: THandle): TDeviceInfoData;
+var
+  deviceID: TCharArray; //buffer for the device ID
+begin
+  if CM_Get_Device_IDA(InstanceHandle, PChar(@deviceID[0]),
+    sizeof(deviceID), 0) <> 0
+  then begin
+    raise EDeviceException.Create(SysErrorMessage(GetLastError));
+  end //then - getting ID failed
+  else begin
+    //getting device information by its ID
+    Result.cbSize := sizeof(Result);
+    if not SetupDiOpenDeviceInfoA(DeviceInfoSet, PChar(@deviceID[0]), 0,
+      0, @Result)
+    then begin
+      raise EDeviceException.Create(SysErrorMessage(GetLastError));
+    end; //then - failed to get DeviceInfo
+  end; //else - successfully got ID
+end; //GetDeviceInformation
+
+//This procedure gets all about the device throug SetupAPI
+procedure TDevice.GetSetupAPIInforamtion(ClassGUID: TGUID);
+begin
+  //Bus type is not applicable to volumes, so it's called in another class
+  fBusType := BusTypeUnknown;
+  fCapabilities := TDeviceCapabilities(GetDeviceProperty(fDeviceInfoData,
+    SPDRP_CAPABILITIES, fDeviceInfoSet, vkNumber)^);
+  fChildren := TList.Create;
+  fClassGUID := ClassGUID;
+  fDescription := PChar(GetDeviceProperty(fDeviceInfoData, SPDRP_DEVICEDESC,
+    fDeviceInfoSet, vkString));
+  fDeviceClassName := PChar(GetDeviceProperty(fDeviceInfoData, SPDRP_CLASS,
+    fDeviceInfoSet, vkString));
+  //Friendly name is not applicable to all kinds of device
+  fManufacturer := PChar(GetDeviceProperty(fDeviceInfoData, SPDRP_MFG,
+    fDeviceInfoSet, vkString));
+end; //GetSetupAPIInformation
+
 {CONSTRUCTOR}
 constructor TDevice.Create(ClassGUID: TGUID; Path: string);
 var
@@ -243,7 +346,7 @@ begin
   inherited Create;
   //we open device as file
   fPath := FormatDevicePath(Path);
-  fileHandle := CreateFile(PChar(fPath), GENERIC_READ,
+  fileHandle := CreateFile(PChar(@fPath[1]), GENERIC_READ,
     FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
   //opening failed
   if fileHandle = INVALID_HANDLE_VALUE
@@ -257,21 +360,22 @@ begin
       fDeviceNumber := GetDeviceNumber(fileHandle);
       fDeviceInfoData := GetDeviceInformation(fDeviceNumber, ClassGUID, fDeviceInfoSet);
       //Getting device properties
-      //Bus type is not applicable to volumes, so it's called in another class
-      fCapabilities := TDeviceCapabilities(GetDeviceProperty
-        (fDeviceNumber.DeviceNumber, fDeviceInfoData, SPDRP_CAPABILITIES,
-        fDeviceInfoSet, vkNumber)^);
-      fClassGUID := ClassGUID;
-      fDescription := PChar(GetDeviceProperty(fDeviceNumber.DeviceNumber,
-        fDeviceInfoData, SPDRP_DEVICEDESC, fDeviceInfoSet, vkString));
-      fDeviceClassName := PChar(GetDeviceProperty(fDeviceNumber.DeviceNumber,
-        fDeviceInfoData, SPDRP_CLASS, fDeviceInfoSet, vkString));
-      fManufacturer := PChar(GetDeviceProperty(fDeviceNumber.DeviceNumber,
-        fDeviceInfoData, SPDRP_MFG, fDeviceInfoSet, vkString));
+      GetSetupAPIInforamtion(ClassGUID);
     finally
       CloseHandle(fileHandle);
     end;
   end; //else - success
+end; //Create
+
+{CONSTRUCTOR OVERLOAD}
+constructor TDevice.Create(ClassGUID: TGUID; InstanceHandle: Cardinal);
+begin
+  try
+    fDeviceInfoSet := GetDeviceInformationSet(ClassGUID);
+    fDeviceInfoData := GetDeviceInformation(InstanceHandle, fDeviceInfoSet);
+    GetSetupAPIInforamtion(ClassGUID);
+  finally
+  end; //finally
 end; //Create
 
 {DESTRUCTOR}
@@ -287,15 +391,19 @@ begin
   then begin
     for i := 0 to fChildren.Count-1 do
     begin
-      TDevice(fChildren.Items[i]^).Destroy;
+      TDevice(fChildren.Items[i]).Destroy;
     end;
     fChildren.Free;
-  end;
-  if Assigned(fParent)
-  then begin
-    fParent.Destroy;
   end;
   inherited Destroy;
 end;
 
 end.
+
+
+
+
+
+
+
+

@@ -14,7 +14,7 @@ uses
 const
   DeviceMask = '%s:';
   VolumeMask = '\\.\' + DeviceMask;
-  DrivePattern = '\\\\.\\PhysicalDrive%d';
+  DrivePattern = '\\.\PhysicalDrive%d';
   DEV_FLOPPY = '\Device\Floppy';
   FLOPPY_DRIVE = '\\?\fdc#';
 
@@ -91,12 +91,7 @@ const
   IOCTL_STORAGE_GET_DEVICE_NUMBER = (IOCTL_STORAGE_BASE shl 16) or ($0420 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
   IOCTL_STORAGE_PREDICT_FAILURE = (IOCTL_STORAGE_BASE shl 16) or ($0440 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
   IOCTL_STORAGE_READ_CAPACITY = (IOCTL_STORAGE_BASE shl 16) or ($0450 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
-  IOCTL_STORAGE_QUERY_PROPERTY = $2D1400;
-
-  {
-  GUID_DEVINTERFACE_DISK: TGUID =
-    (D1:$53f56307; D2:$b6bf; D3:$11d0; D4:($94, $f2, $00, $a0, $c9, $1e, $fb, $8b));
-    }
+  IOCTL_STORAGE_QUERY_PROPERTY = ((IOCTL_STORAGE_BASE shl 16) or (FILE_ANY_ACCESS shl 14) or ($0500 shl 2) or METHOD_BUFFERED);
 
 type
   DEVICE_TYPE = DWORD;
