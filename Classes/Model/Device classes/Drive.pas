@@ -3,10 +3,6 @@
   Written by J.L.Blackrow.
 }
 
-{
-  TODO: get bus number through DeviceIoControl      //maybe?
-}
-
 unit Drive;
 
 interface
@@ -15,6 +11,7 @@ uses
   Device;
 
 type
+  //Disk device class
   TDiskDrive = class(TDevice)
   public
     constructor Create(Path: string);
@@ -24,16 +21,15 @@ type
 implementation
 
 uses
-  WMI, SysUtils;
+  WMI, SysUtils, Windows, WinIOCtl, DeviceException;
 
 {CONSTRUCTOR}
-constructor TDiskDrive.Create;
+constructor TDiskDrive.Create(Path: string);
 begin
-  inherited Create(GUID_DEVCLASS_DISKDRIVE, Path);
-  fBusType := TBusType(GetDeviceProperty(fDeviceNumber.DeviceNumber,
-    fDeviceInfoData, SPDRP_BUSNUMBER, fDeviceInfoSet, vkNumber)^);
-  fFriendlyName := String(GetDeviceProperty(fDeviceNumber.DeviceNumber,
-    fDeviceInfoData, SPDRP_FRIENDLYNAME, fDeviceInfoSet, vkString));
+  inherited Create(GUID_DEVINTERFACE_DISK, Path);
+  fBusType := GetBusType(Path);
+  fFriendlyName := PChar(GetDeviceProperty(fDeviceInfoData, SPDRP_FRIENDLYNAME,
+    fDeviceInfoSet, vkString));
 end;
 
 {DESTRUCTOR}
@@ -43,3 +39,4 @@ begin
 end;
 
 end.
+
