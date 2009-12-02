@@ -18,7 +18,8 @@ uses
   ShellObjExtended in 'Classes\Model\API\ShellObjExtended.pas',
   Device in 'Classes\Model\Device classes\Device.pas',
   Drive in 'Classes\Model\Device classes\Drive.pas',
-  USBDevice in 'Classes\Model\Device classes\USBDevice.pas';
+  USBDevice in 'Classes\Model\Device classes\USBDevice.pas',
+  Dbt in 'Classes\Model\API\Dbt.pas';
 
 {$R *.res}
 begin

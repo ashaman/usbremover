@@ -24,7 +24,7 @@ uses
 {CONSTRUCTOR}
 constructor TUSBDevice.Create(InstanceHandle: Cardinal);
 begin
-  inherited Create(GUID_DEVCLASS_USB, InstanceHandle);
+  inherited Create(GUID_DEVINTERFACE_USB_DEVICE, InstanceHandle);
 end;
 
 {DESTRUCTOR}
