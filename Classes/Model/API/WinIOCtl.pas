@@ -169,34 +169,6 @@ const
   FSCTL_UNLOCK_VOLUME = (FILE_DEVICE_FILE_SYSTEM shl 16) or (7 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
   FSCTL_DISMOUNT_VOLUME = (FILE_DEVICE_FILE_SYSTEM shl 16) or (8 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
 
-  {Window messages}
-
-  {A request to change the current configuration (dock or undock) has been canceled}
-  DBT_CONFIGCHANGECANCELED = $0019;
-  {The current configuration has changed, due to a dock or undock}
-  DBT_CONFIGCHANGED = $0018;
-  {A custom event has occurred}
-  DBT_CUSTOMEVENT = $8006;
-  {A device or piece of media has been inserted and is now available}
-  DBT_DEVICEARRIVAL = $8000;
-  {Permission is requested to remove a device or piece of media.
-  Any application can deny this request and cancel the removal}
-  DBT_DEVICEQUERYREMOVE = $8001;
-  {A request to remove a device or piece of media has been canceled}
-  DBT_DEVICEQUERYREMOVEFAILED = $8002;
-  {A device or piece of media has been removed}
-  DBT_DEVICEREMOVECOMPLETE = $8004;
-  {A device or piece of media is about to be removed. Cannot be denied}
-  DBT_DEVICEREMOVEPENDING = $8003;
-  {A device-specific event has occurred}
-  DBT_DEVICETYPESPECIFIC = $8005;
-  {A device has been added to or removed from the system}
-  DBT_DEVNODES_CHANGED = $0007;
-  {Permission is requested to change the current configuration (dock or undock)}
-  DBT_QUERYCHANGECONFIG = $0017;
-  {The meaning of this message is user-defined}
-  DBT_USERDEFINED = $FFFF;
-
 type
 
 // matches cfmgr32.h CM_DEVCAP_* definitions

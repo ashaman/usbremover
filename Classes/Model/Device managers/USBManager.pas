@@ -7,16 +7,16 @@
 unit USBManager;
 
 interface
-uses
-  DeviceManager, Device, Classes;
 
-const
-  MAX_ATTEMPTS = 3;
+uses
+  DeviceManager, Device, Classes, Messages, Dbt;
 
 type
   TUSBManager = class(TDeviceManager)
   protected
     function BuildAll(Devices: TList): TList; override;
+    procedure HandleMessage(var Msg: TMessage); override;
+    function SetMessageFilter: TDEV_BROADCAST_DEVICEINTERFACE; override;
   public
     destructor Destroy; override;
     procedure RemoveDrive(index: integer); overload; override;
@@ -112,8 +112,6 @@ begin
       then begin
         //notifying all the windows
         device.NotifySystem;
-        //the destructor should be called when there's a Windows message about
-        //successful removal 
         device.Destroy;
         fDevices.Remove(device);
       end; //then
@@ -123,12 +121,52 @@ begin
     end; //else - ejection failed
   finally
   end;
-end;
+end; //RemoveDrive
 
 //This method makes force drive removal
 procedure TUSBManager.ForcedRemoveDrive;
 begin
 end;
+
+//This function handles Windows messages
+procedure TUSBManager.HandleMessage(var Msg: TMessage);
+var
+  dev: PDEV_BROADCAST_HDR; //device header
+  s: string; //temporary string
+begin
+  if Msg.WParam=DBT_DEVICEARRIVAL
+  then begin
+    dev := PDEV_BROADCAST_HDR(msg.LParam);
+    if dev^.dbch_devicetype = DBT_DEVTYP_DEVICEINTERFACE
+    then begin
+      s := String(PChar(@PDEV_BROADCAST_DEVICEINTERFACE(Msg.LParam)^.dbcc_name[0]));
+      if Pos(USBDevicePath, s) <> 0
+      then begin
+        FillDevices;
+      end; //then - USB device arrived, need to add to list
+    end; //then - device interface
+  end; //then - DBT_DEVICEARRIVAL
+  if (msg.WParam = DBT_DEVICEREMOVECOMPLETE)
+  then begin
+    dev := PDEV_BROADCAST_HDR(msg.LParam);
+    if dev^.dbch_devicetype = DBT_DEVTYP_DEVICEINTERFACE
+    then begin
+      if Pos(USBDevicePath, s) <> 0
+      then begin
+        FillDevices;
+      end; //then - USB device removed, need to remove from list
+    end; //then - device interface
+  end; //then - DBT_DEVICEREMOVECOMPLETE
+end; //HandleMessage
+
+//This function sets Windows message filter
+function TUSBManager.SetMessageFilter: TDEV_BROADCAST_DEVICEINTERFACE;
+begin
+  Result.dbcc_size := sizeof(Result);
+  Result.dbcc_devicetype := DBT_DEVTYP_DEVICEINTERFACE;
+  Result.dbcc_classguid := GUID_DEVINTERFACE_USB_DEVICE;
+end; //SetMessageFilter
+
 
 {TODO: Find out if it is possible to return disconnected device}
 

@@ -2,14 +2,11 @@
   Abstract class - parent class for all device managers
   Developed by J.L.Blackrow
 }
-{
-  TODO: add Windows message handling
-}
 unit DeviceManager;
 
 interface
 uses
-  Windows, Classes, DeviceException, Messages, WinIOCtl, Device;
+  Windows, Classes, DeviceException, Messages, WinIOCtl, Device, Dbt;
 
 type
 
@@ -20,13 +17,18 @@ type
     function FilterVolumes(drivePath: PChar): boolean;
     function LinkDevices(var Volumes: TList; var Drives: TList): TList;
     procedure GetVolumesAndDrives(var Volumes: TList; var Drives: TList);
+    procedure RegisterNotification;
+    procedure WndProc(var Msg: TMessage); message WM_DEVICECHANGE;
   protected
     fDevices: TList;
     fLogicalDrives: TStringList;
+    fWindowPointer: Pointer;
     constructor Create;
     function BuildAll(Devices: TList): TList; virtual; abstract;
+    procedure FillDevices;
+    procedure HandleMessage(var Msg: TMessage); virtual; abstract;
+    function SetMessageFilter: TDEV_BROADCAST_DEVICEINTERFACE; virtual; abstract;
     procedure NotifyAll;
-    procedure ProcessMessages(var msg: TMessage); message WM_DeviceChange;
   public
     destructor Destroy; override;
     //These functions depend on device type
@@ -173,14 +175,11 @@ begin
   end; //else - opened
 end; //GetVolumesAndDrives
 
-
-{CONSTRUCTOR}
-constructor TDeviceManager.Create;
+//This procedure fills the device list
+procedure TDeviceManager.FillDevices;
 var
   fVolumes, fDrives: TList; //temporary lists
 begin
-  inherited Create;
-  fEventHandlers := TList.Create;
   fVolumes := TList.Create;
   fDrives := TList.Create;
   GetVolumesAndDrives(fVolumes, fDrives);
@@ -191,13 +190,50 @@ begin
   end; //then - no devices were detected
   fVolumes.Destroy;
   fDrives.Destroy;
+end; //FillDevices
+
+{CONSTRUCTOR}
+constructor TDeviceManager.Create;
+begin
+  inherited Create;
+  fEventHandlers := TList.Create;
+  FillDevices;
+  RegisterNotification;
 end;
+
+//This fucbtion registers this class for handling Windows messages
+procedure TDeviceManager.RegisterNotification;
+var
+  windowHandle: THandle; //new window handle
+  messageFilter: TDEV_BROADCAST_DEVICEINTERFACE; //message filter
+begin
+  //setting filters
+  messageFilter := SetMessageFilter;
+  //registering window class for handling messages
+  windowHandle := AllocateHWnd(WndProc);
+  fWindowPointer := RegisterDeviceNotification(windowHandle,
+    @messageFilter, DEVICE_NOTIFY_ALL_INTERFACE_CLASSES);
+  if not Assigned(fWindowPointer)
+  then begin
+    raise EDeviceException.Create('Cannot register message handler');
+  end; //then - failed to register message handler
+end; //RegisterNotification
+
+//This procedure gets Windows messages
+procedure TDeviceManager.WndProc(var Msg: TMessage);
+begin
+  if Msg.Msg = WM_DEVICECHANGE
+  then begin
+    HandleMessage(Msg);
+  end; //then - it's a device notification
+end; //WndProc
 
 {DESTRUCTOR}
 destructor TDeviceManager.Destroy;
 var
   i: integer;
 begin
+  UnregisterDeviceNotification(fWindowPointer);
   if Assigned(fEventHandlers)
   then begin
     for i := 0 to fEventHandlers.Count-1 do
@@ -277,11 +313,9 @@ begin
   end;
 end; //NotifyAll
 
-procedure TDeviceManager.ProcessMessages(var msg: TMessage);
-begin
-end;
-
 end.
+
+
 
 
 
