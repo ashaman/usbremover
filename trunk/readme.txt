@@ -23,11 +23,11 @@ I found WMI libraries in Delphi 7. To add them, it's necessary to do the followi
 		b) Microsoft WMI Scripting (v. 1.2) library
 So, now I'll try to use them in my program
 
-11:37 09.12.2009
-It is necessary to create Volume class...
-
 11:01 13.11.2009
 Some problems occured when I found out that on my telephone there are two separate drives! But this is the only device! When something is opened from one drive, and I'm trying to eject another - it fails! So, it's necessary to solve this problem. My idea is to find all removeable devices in system, get their children, and for each child - check if there are any processes using files on it.
 
 23:46 24.11.2009
 Ok, the development is in progress... I hope we'll finish the model until the end of this week...
+
+0:09 04.12.2009
+YEAH!!! I detect device arrivals and removals!!! But there's one great problem... VCL forms does not permit to call their methods from another thread

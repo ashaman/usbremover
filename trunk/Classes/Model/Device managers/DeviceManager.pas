@@ -2,6 +2,11 @@
   Abstract class - parent class for all device managers
   Developed by J.L.Blackrow
 }
+
+{
+  TODO: Repair device rescanning
+}
+
 unit DeviceManager;
 
 interface
@@ -37,9 +42,9 @@ type
     procedure ForcedRemoveDrive(index: integer); virtual; abstract;
     //These funtions are common for all devices
     function GetBlockedFiles: TStrings;
-    function GetDeviceInfo(index: integer): TDevice; overload;
-    function GetDeviceInfo(name: PChar): TDevice; overload;
-    function GetDeviceCount: integer;
+    function GetDeviceInfo(index: integer): TDevice; overload; virtual;
+    function GetDeviceInfo(name: PChar): TDevice; overload; virtual;
+    function GetDeviceCount: integer; virtual;
     //These functions add event handlers from listeners
     procedure AddHandler(Handler: TNotifyEvent);
     procedure RemoveHandler(Handler: TNotifyEvent);
@@ -182,6 +187,10 @@ var
 begin
   fVolumes := TList.Create;
   fDrives := TList.Create;
+  if Assigned(fDevices)
+  then begin
+    fDevices.Clear;
+  end;
   GetVolumesAndDrives(fVolumes, fDrives);
   fDevices := BuildAll(LinkDevices(fVolumes, fDrives));
   if not Assigned(fDevices)
@@ -190,18 +199,10 @@ begin
   end; //then - no devices were detected
   fVolumes.Destroy;
   fDrives.Destroy;
+  //NotifyAll;
 end; //FillDevices
 
-{CONSTRUCTOR}
-constructor TDeviceManager.Create;
-begin
-  inherited Create;
-  fEventHandlers := TList.Create;
-  FillDevices;
-  RegisterNotification;
-end;
-
-//This fucbtion registers this class for handling Windows messages
+//This function registers this class for handling Windows messages
 procedure TDeviceManager.RegisterNotification;
 var
   windowHandle: THandle; //new window handle
@@ -227,6 +228,17 @@ begin
     HandleMessage(Msg);
   end; //then - it's a device notification
 end; //WndProc
+
+{TODO: how to refresh devices on a new start}
+
+{CONSTRUCTOR}
+constructor TDeviceManager.Create;
+begin
+  inherited Create;
+  fEventHandlers := TList.Create;
+  FillDevices;
+  RegisterNotification;
+end;
 
 {DESTRUCTOR}
 destructor TDeviceManager.Destroy;
@@ -287,6 +299,7 @@ begin
   if (fEventHandlers.IndexOf(@Handler) = -1) //is not in the list
   then begin
     fEventHandlers.Add(@Handler);
+    Handler(self);
   end;
 end;
 
@@ -297,6 +310,9 @@ begin
 end; //RemoveHandler
 
 //Notifies all listeners about changes in this object
+
+{TODO: Synchronize with a view object!!!}
+{TODO: fix invalid typecast}
 procedure TDeviceManager.NotifyAll;
 var
   i, count: integer;
