@@ -1,5 +1,5 @@
 {
-  This unit contains WMI function prototypes
+  This unit contains SetupAPI function prototypes
 }
 unit WMI;
 
@@ -108,6 +108,9 @@ type
   end;
   TSPDeviceInterfaceDetailDataA = SP_DEVICE_INTERFACE_DETAIL_DATA_A;
   TSPDeviceInterfaceDetailData = TSPDeviceInterfaceDetailDataA;
+
+  function CMP_WaitNoPendingInstallEvents(Timeout: Cardinal): Cardinal; stdcall;
+    external cfgmgr;
 
   function SetupDiGetClassDevsA(ClassGuid: PGUID; const Enumerator: PAnsiChar;
     hwndParent: HWND; Flags: DWORD): HDEVINFO; stdcall; external setupapi;

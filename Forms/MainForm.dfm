@@ -37,6 +37,15 @@ object MainFrm: TMainFrm
       TabOrder = 0
       OnChange = ComboBox1Change
     end
+    object Button1: TButton
+      Left = 216
+      Top = 16
+      Width = 75
+      Height = 25
+      Caption = 'Button1'
+      TabOrder = 1
+      OnClick = Button1Click
+    end
   end
   object Panel2: TPanel
     Left = 0

@@ -13,8 +13,11 @@ type
     Panel1: TPanel;
     Panel2: TPanel;
     Label1: TLabel;
-    procedure FormCreate(Sender: TObject);
+    Button1: TButton;
     procedure ComboBox1Change(Sender: TObject);
+    procedure FillDrives(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     procedure AddInfo(Device: TDevice; Parent: TTreeNode);
   public
@@ -43,14 +46,16 @@ begin
   end;
 end;
 
-procedure TMainFrm.FormCreate(Sender: TObject);
+procedure TMainFrm.FillDrives;
 var
-  rm: TUSBManager;
   i: integer;
   device: TDevice;
   treeNode: TTreeNode;
+  rm: TUSBManager;
 begin
   rm := TUSBManager.GetManager;
+  ComboBox1.Items.Clear;
+  TreeView1.Items.Clear;
   treeNode := TreeView1.Items.GetFirstNode;
   for i := 0 to rm.GetDeviceCount-1 do
   begin
@@ -64,6 +69,16 @@ end;
 procedure TMainFrm.ComboBox1Change(Sender: TObject);
 begin
   TUSBManager.GetManager.RemoveDrive(ComboBox1.ItemIndex);
+end;
+
+procedure TMainFrm.Button1Click(Sender: TObject);
+begin
+  FillDrives(self);
+end;
+
+procedure TMainFrm.FormCreate(Sender: TObject);
+begin
+  TUSBManager.GetManager.AddHandler(self.FillDrives);
 end;
 
 end.

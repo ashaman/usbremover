@@ -9,30 +9,68 @@ unit USBManager;
 interface
 
 uses
-  DeviceManager, Device, Classes, Messages, Dbt;
+  DeviceManager, Device, Classes, Messages, Dbt, Windows, SyncObjs;
 
 type
   TUSBManager = class(TDeviceManager)
+  private
+    procedure InvokeOnInstallation;
+    //procedure InvokeOnInstallation(Instance: Pointer);
   protected
+    constructor Create;
     function BuildAll(Devices: TList): TList; override;
     procedure HandleMessage(var Msg: TMessage); override;
     function SetMessageFilter: TDEV_BROADCAST_DEVICEINTERFACE; override;
   public
     destructor Destroy; override;
+    procedure ForcedRemoveDrive(index: integer); override;
+    function GetDeviceInfo(index: integer): TDevice; overload; override;
+    function GetDeviceInfo(name: PChar): TDevice; overload; override;
+    function GetDeviceCount: integer; override;
     procedure RemoveDrive(index: integer); overload; override;
     procedure RemoveDrive(device: TDevice); overload; override;
-    procedure ForcedRemoveDrive(index: integer); override;
     class function GetManager: TUSBManager;
   end;
 
 implementation
 
 uses
-  SysUtils, WMI, ShlObj, ShellObjExtended, Windows, WinIOCtl, DeviceException,
+  SysUtils, WMI, ShlObj, ShellObjExtended, WinIOCtl, DeviceException,
   USBDevice;
 
 var
   Instance: TUSBManager;
+  fCriticalSection: TRTLCriticalSection;
+
+function TUSBManager.GetDeviceInfo(index: integer): TDevice;
+begin
+  EnterCriticalSection(fCriticalSection);
+  try
+    Result := inherited GetDeviceInfo(index);
+  finally
+    LeaveCriticalSection(fCriticalSection);
+  end;
+end;
+
+function TUSBManager.GetDeviceInfo(name: PChar): TDevice;
+begin
+  EnterCriticalSection(fCriticalSection);
+  try
+    Result := inherited GetDeviceInfo(name);
+  finally
+    LeaveCriticalSection(fCriticalSection);
+  end;
+end;
+
+function TUSBManager.GetDeviceCount: integer;
+begin
+  EnterCriticalSection(fCriticalSection);
+  try
+    Result := inherited GetDeviceCount;
+  finally
+    LeaveCriticalSection(fCriticalSection);
+  end;
+end;
 
 //This function completes the building oth the device tree
 function TUSBManager.BuildAll(Devices: TList): TList;
@@ -70,6 +108,12 @@ begin
   end; //for-loop
   fUSBDevices.Free;
 end; //BuildAll
+
+{CONSTRUCTOR}
+constructor TUSBManager.Create;
+begin
+  inherited Create;
+end; //Create
 
 {DESTRUCTOR}
 destructor TUSBManager.Destroy;
@@ -112,8 +156,9 @@ begin
       then begin
         //notifying all the windows
         device.NotifySystem;
-        device.Destroy;
         fDevices.Remove(device);
+        device.Destroy;
+        NotifyAll;
       end; //then
     end //then - ejection succeeded
     else begin
@@ -126,7 +171,25 @@ end; //RemoveDrive
 //This method makes force drive removal
 procedure TUSBManager.ForcedRemoveDrive;
 begin
-end;
+end; //ForcedRemoveDrive
+
+{
+  TODO: Critical section works only with globals!!!
+}
+
+//This procedure runs in a separate thread
+procedure TUSBManager.InvokeOnInstallation;
+begin
+  //loop until the device is installed
+  while CMP_WaitNoPendingInstallEvents(2000) = WAIT_TIMEOUT do;
+  EnterCriticalSection(fCriticalSection);
+  try
+    Instance.FillDevices;
+  finally
+    LeaveCriticalSection(fCriticalSection);
+  end; //finally
+  EndThread(0);
+end; //InvokeOnInstallation
 
 //This function handles Windows messages
 procedure TUSBManager.HandleMessage(var Msg: TMessage);
@@ -134,7 +197,7 @@ var
   dev: PDEV_BROADCAST_HDR; //device header
   s: string; //temporary string
 begin
-  if Msg.WParam=DBT_DEVICEARRIVAL
+  if (Msg.WParam = DBT_DEVICEARRIVAL) //or (Msg.WParam = DBT_DEVICEREMOVECOMPLETE)
   then begin
     dev := PDEV_BROADCAST_HDR(msg.LParam);
     if dev^.dbch_devicetype = DBT_DEVTYP_DEVICEINTERFACE
@@ -142,21 +205,17 @@ begin
       s := String(PChar(@PDEV_BROADCAST_DEVICEINTERFACE(Msg.LParam)^.dbcc_name[0]));
       if Pos(USBDevicePath, s) <> 0
       then begin
-        FillDevices;
+        {TODO: improve delays!!!}
+        {TODO: try to use Delphi thread with critical section?}
+        BeginThread(nil, 0, @TUSBManager.InvokeOnInstallation,
+          nil, 0, PDWORD(nil)^);
       end; //then - USB device arrived, need to add to list
     end; //then - device interface
-  end; //then - DBT_DEVICEARRIVAL
-  if (msg.WParam = DBT_DEVICEREMOVECOMPLETE)
+  end; //then - DBT_DEVICEARRIVAL or DBT_DEVICEREMOVECOMPLETE
+  if (Msg.WParam = DBT_DEVNODES_CHANGED)
   then begin
-    dev := PDEV_BROADCAST_HDR(msg.LParam);
-    if dev^.dbch_devicetype = DBT_DEVTYP_DEVICEINTERFACE
-    then begin
-      if Pos(USBDevicePath, s) <> 0
-      then begin
-        FillDevices;
-      end; //then - USB device removed, need to remove from list
-    end; //then - device interface
-  end; //then - DBT_DEVICEREMOVECOMPLETE
+    //MessageBox(0, PChar('Change'), PChar('!!!'), 0);
+  end; //then - DBT_DEVNODES_CHANGED
 end; //HandleMessage
 
 //This function sets Windows message filter
@@ -178,5 +237,8 @@ begin
   end;
   Result := Instance;
 end;
+
+initialization
+  InitializeCriticalSection(fCriticalSection);
 
 end.

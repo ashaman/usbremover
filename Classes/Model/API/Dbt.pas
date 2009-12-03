@@ -7,9 +7,9 @@ unit Dbt;
 interface
 
 const
-  USBDevicePath = '\\?\USB';
-  USBStorageDevicePath = '\\?\USBSTOR';
-  VolumePath = '\\?\STORAGE';
+  USBDevicePath = '\\?\USB#';
+  USBStorageDevicePath = '\\?\USBSTOR#';
+  VolumePath = '\\?\STORAGE#';
   
 type
 
