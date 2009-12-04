@@ -5,6 +5,7 @@
 
 {
   TODO: Repair device rescanning
+  Avoid floppy rescanning
 }
 
 unit DeviceManager;
@@ -12,7 +13,7 @@ unit DeviceManager;
 interface
 
 uses
-  Windows, Classes, DeviceException, Messages, JwaWinIOCtl, Device, Dbt,
+  Windows, Classes, DeviceException, Messages, WinIOCtl, Device, Dbt,
   BroadcastEvent;
 
 type
@@ -53,7 +54,7 @@ type
 implementation
 
 uses
-  SysUtils, WMI, ShellObjExtended, Volume, StrUtils, Drive, WinIoCtl;
+  SysUtils, WMI, ShellObjExtended, Volume, StrUtils, Drive;
 
 //Filters only necessary devices which match the type criteria
 function TDeviceManager.FilterVolumes(drivePath: PChar): boolean;
@@ -171,6 +172,50 @@ begin
     finally
       FindVolumeClose(handle);
     end; //finally
+{
+  TODO: Device creation model
+  
+  VERY IMPORTANT!!!
+  In MSDN
+
+  ++ plus use CM_Get_Child and CM_Get_Sibling
+
+
+The CM_Locate_DevNode function obtains a device instance handle to the device node that is associated with a specified device instance identifier, on the local machine.
+
+
+CMAPI CONFIGRET WINAPI
+
+  CM_Locate_DevNode(
+    OUT PDEVINST  pdnDevInst,
+    IN DEVINSTID  pDeviceID,  OPTIONAL
+    IN ULONG  ulFlags
+    );
+
+
+Parameters
+pdnDevInst 
+A pointer to a device instance handle that CM_Locate_DevNode retrieves. The retrieved handle is bound to the local machine. 
+pDeviceID 
+A pointer to a NULL-terminated string representing a device instance identifier. If this value is NULL, or if it points to a zero-length string, the function retrieves a device instance handle to the device at the root of the device tree. 
+ulFlags 
+A variable of ULONG type that supplies one of the following flag values that apply if the caller supplies a device instance identifier:
+CM_LOCATE_DEVNODE_NORMAL 
+The function retrieves the device instance handle for the specified device only if the device is currently configured in the device tree. 
+CM_LOCATE_DEVNODE_PHANTOM 
+The function retrieves a device instance handle for the specified device if the device is currently configured in the device tree or the device is a nonpresent device that is not currently configured in the device tree. 
+
+CM_LOCATE_DEVNODE_CANCELREMOVE 
+The function retrieves a device instance handle for the specified device if the device is currently configured in the device tree or in the process of being removed from the device tree. If the device is in the process of being removed, the function cancels the removal of the device.
+
+CM_LOCATE_DEVNODE_NOVALIDATION 
+Not used. 
+
+Return Value
+If the operation succeeds, CM_Locate_DevNode returns CR_SUCCESS. Otherwise, the function returns one of the CR_Xxx error codes that are defined in cfgmgr32.h.
+
+
+}
     diskIndexes := [];
     for i := 0 to fVolumeNames.Count-1 do
     begin
@@ -302,6 +347,7 @@ begin
 end; //GetDeviceInfo
 
 {TODO: Synchronize with a view object!!!}
+
 end.
 
 

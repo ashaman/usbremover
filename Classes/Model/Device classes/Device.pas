@@ -57,7 +57,6 @@ type
     function GetBusType(Path: string): TBusType;
     function GetDeviceProperty(DeviceInformation: TDeviceInfoData;
       PropertyCode: integer; DeviceInfoSet: THandle; ValueKind: TValueKind): PByte;
-    function FormatDevicePath(const Path: string): string;
     constructor Create(ClassGUID: TGUID; Path: string); overload;
     constructor Create(ClassGUID: TGUID; InstanceHandle: Cardinal); overload;
   public
@@ -75,6 +74,7 @@ type
     property InstanceHandle: THandle read GetInstanceHandle;
     property Manufacturer: string read fManufacturer;
     property Parent: TDevice read fParent;
+    class function FormatDevicePath(const Path: string): string;
   end;
 
 implementation
@@ -119,7 +119,7 @@ begin
 end;
 
 //Formats the device path for opening it as file
-function TDevice.FormatDevicePath(const Path: string): string;
+class function TDevice.FormatDevicePath(const Path: string): string;
 const
   dot = '.';
   question = '?'; //question mark
