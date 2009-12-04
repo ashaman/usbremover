@@ -3,6 +3,10 @@
   Developed by J.L. Blackrow.
 }
 
+{
+  TODO: Getting access rights for scanning system information
+}
+
 unit Device;
 
 interface
@@ -25,7 +29,7 @@ type
   //Device class
   TDevice = class(TObject)
   private
-    fCapabilities: TDeviceCapabilities; //device capabilities
+    fCapabilities: {Cardinal;} TdeviceCapabilities; //device capabilities
     fClassGUID: TGUID; //class GUID
     fDescription: string; //device description string
     fDeviceClassName: string; //class name
@@ -61,7 +65,7 @@ type
     procedure NotifySystem; virtual;
     procedure AddChild(Device: TDevice);
     property BusType: TBusType read fBusType;
-    property Capabilities: TDeviceCapabilities read fCapabilities;
+    property Capabilities: {Cardinal} TDeviceCapabilities read fCapabilities;
     property Children [index: integer]: TDevice read GetChild;
     property ClassGUID: TGUID read fClassGUID;
     property Count: integer read GetCount;

@@ -19,7 +19,8 @@ uses
   Device in 'Classes\Model\Device classes\Device.pas',
   Drive in 'Classes\Model\Device classes\Drive.pas',
   USBDevice in 'Classes\Model\Device classes\USBDevice.pas',
-  Dbt in 'Classes\Model\API\Dbt.pas';
+  Dbt in 'Classes\Model\API\Dbt.pas',
+  BroadcastEvent in 'Classes\Controller\BroadcastEvent.pas';
 
 {$R *.res}
 begin

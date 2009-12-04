@@ -1,6 +1,10 @@
 {
   Partial translation of WinIOCtl.h, Dbt.h, setupapi.h and other Win SDK headers
 }
+
+{
+  TODO: download JEDI API Library and use it
+}
 unit WinIOCtl;
 
 interface
@@ -21,6 +25,7 @@ const
 type
   TCharArray = array [0..MAX_PATH] of char;
   PCharArray = ^TCharArray;
+
 {
   STRUCTURES AND CONSTANTS FROM WINIOCTL.H
   Partially translated by J.L.Blackrow (e-mail: DarthYarius_0990@mail.ru)
@@ -32,6 +37,7 @@ const
   {
     From ntddk.h and wdm.h
   }
+
   FILE_DEVICE_DISK = $00000007;
   FILE_DEVICE_MASS_STORAGE = $0000002d;
   FILE_DEVICE_FILE_SYSTEM = $00000009;
@@ -118,7 +124,6 @@ type
     BusTypeSata          = $0B,
     BusTypeMaxReserved   = $7F
   );
-
 
 {
   CONSTANTS AND TYPES FROM NTDDSCSI.H
@@ -242,6 +247,7 @@ type
   PREVENT_MEDIA_REMOVAL  = record
     PreventMediaRemoval : ByteBool;
   end;
+
 
 implementation
 
