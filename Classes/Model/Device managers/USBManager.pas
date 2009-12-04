@@ -11,6 +11,11 @@ interface
 uses
   DeviceManager, Device, Classes, Messages, Dbt, Windows, SyncObjs;
 
+//This is the event name that should de used if someone wants to access the
+//manager's properties
+const
+  EventName = 'USRTargetInvocationEvt[{DCF5F2E1-52BA-40C6-A5AF-68AFFE002A8D}]';
+
 type
   TUSBManager = class(TDeviceManager)
   private
@@ -40,35 +45,38 @@ uses
 
 var
   Instance: TUSBManager;
-  fCriticalSection: TRTLCriticalSection;
+  fManualResetEvent: THandle;
 
 function TUSBManager.GetDeviceInfo(index: integer): TDevice;
 begin
-  EnterCriticalSection(fCriticalSection);
+  ResetEvent(fManualResetEvent);
   try
     Result := inherited GetDeviceInfo(index);
   finally
-    LeaveCriticalSection(fCriticalSection);
+    SetEvent(fManualResetEvent);
+    PulseEvent(fManualResetEvent);
   end;
 end;
 
 function TUSBManager.GetDeviceInfo(name: PChar): TDevice;
 begin
-  EnterCriticalSection(fCriticalSection);
+  ResetEvent(fManualResetEvent);
   try
     Result := inherited GetDeviceInfo(name);
   finally
-    LeaveCriticalSection(fCriticalSection);
+    SetEvent(fManualResetEvent);
+    PulseEvent(fManualResetEvent);
   end;
 end;
 
 function TUSBManager.GetDeviceCount: integer;
 begin
-  EnterCriticalSection(fCriticalSection);
+  ResetEvent(fManualResetEvent);
   try
     Result := inherited GetDeviceCount;
   finally
-    LeaveCriticalSection(fCriticalSection);
+    SetEvent(fManualResetEvent);
+    PulseEvent(fManualResetEvent);
   end;
 end;
 
@@ -113,13 +121,19 @@ end; //BuildAll
 constructor TUSBManager.Create;
 begin
   inherited Create;
+  fManualResetEvent := CreateEvent(nil, true, true, PChar(EventName));
+  if fManualResetEvent = INVALID_HANDLE_VALUE
+  then begin
+    raise EDeviceException.Create(SysErrorMessage(GetLastError));
+  end;
 end; //Create
 
 {DESTRUCTOR}
 destructor TUSBManager.Destroy;
 begin
+  CloseHandle(fManualResetEvent);
   inherited Destroy;
-end;
+end; //Destroy
 
 //This function removes drive by its index in the list
 procedure TUSBManager.RemoveDrive(index: integer);
@@ -158,7 +172,7 @@ begin
         device.NotifySystem;
         fDevices.Remove(device);
         device.Destroy;
-        NotifyAll;
+        fBroadcastEvent.Signal(nil);
       end; //then
     end //then - ejection succeeded
     else begin
@@ -173,20 +187,17 @@ procedure TUSBManager.ForcedRemoveDrive;
 begin
 end; //ForcedRemoveDrive
 
-{
-  TODO: Critical section works only with globals!!!
-}
-
 //This procedure runs in a separate thread
 procedure TUSBManager.InvokeOnInstallation;
 begin
   //loop until the device is installed
   while CMP_WaitNoPendingInstallEvents(2000) = WAIT_TIMEOUT do;
-  EnterCriticalSection(fCriticalSection);
+  ResetEvent(fManualResetEvent);
   try
     Instance.FillDevices;
   finally
-    LeaveCriticalSection(fCriticalSection);
+    SetEvent(fManualResetEvent);
+    PulseEvent(fManualResetEvent);
   end; //finally
   EndThread(0);
 end; //InvokeOnInstallation
@@ -197,7 +208,7 @@ var
   dev: PDEV_BROADCAST_HDR; //device header
   s: string; //temporary string
 begin
-  if (Msg.WParam = DBT_DEVICEARRIVAL) //or (Msg.WParam = DBT_DEVICEREMOVECOMPLETE)
+  if (Msg.WParam = DBT_DEVICEARRIVAL)
   then begin
     dev := PDEV_BROADCAST_HDR(msg.LParam);
     if dev^.dbch_devicetype = DBT_DEVTYP_DEVICEINTERFACE
@@ -205,17 +216,16 @@ begin
       s := String(PChar(@PDEV_BROADCAST_DEVICEINTERFACE(Msg.LParam)^.dbcc_name[0]));
       if Pos(USBDevicePath, s) <> 0
       then begin
-        {TODO: improve delays!!!}
         {TODO: try to use Delphi thread with critical section?}
         BeginThread(nil, 0, @TUSBManager.InvokeOnInstallation,
           nil, 0, PDWORD(nil)^);
       end; //then - USB device arrived, need to add to list
     end; //then - device interface
-  end; //then - DBT_DEVICEARRIVAL or DBT_DEVICEREMOVECOMPLETE
-  if (Msg.WParam = DBT_DEVNODES_CHANGED)
+  end; //then - DBT_DEVICEARRIVAL
+  if (Msg.WParam = DBT_DEVICEREMOVECOMPLETE)
   then begin
-    //MessageBox(0, PChar('Change'), PChar('!!!'), 0);
-  end; //then - DBT_DEVNODES_CHANGED
+    FillDevices;
+  end; //then - DBT_DEVICEREMOVECOMPLETE
 end; //HandleMessage
 
 //This function sets Windows message filter
@@ -229,6 +239,7 @@ end; //SetMessageFilter
 
 {TODO: Find out if it is possible to return disconnected device}
 
+//This is singleton initialization
 class function TUSBManager.GetManager: TUSBManager;
 begin
   if not Assigned(Instance)
@@ -236,9 +247,6 @@ begin
     Instance := TUSBManager.Create;
   end;
   Result := Instance;
-end;
-
-initialization
-  InitializeCriticalSection(fCriticalSection);
+end; //GetManager
 
 end.

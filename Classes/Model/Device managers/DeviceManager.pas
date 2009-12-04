@@ -10,21 +10,23 @@
 unit DeviceManager;
 
 interface
+
 uses
-  Windows, Classes, DeviceException, Messages, WinIOCtl, Device, Dbt;
+  Windows, Classes, DeviceException, Messages, JwaWinIOCtl, Device, Dbt,
+  BroadcastEvent;
 
 type
 
   //Abstract class for device manager
   TDeviceManager = class(TObject)
   private
-    fEventHandlers: TList;
     function FilterVolumes(drivePath: PChar): boolean;
     function LinkDevices(var Volumes: TList; var Drives: TList): TList;
     procedure GetVolumesAndDrives(var Volumes: TList; var Drives: TList);
     procedure RegisterNotification;
     procedure WndProc(var Msg: TMessage); message WM_DEVICECHANGE;
   protected
+    fBroadcastEvent: TBroadcastNotifyEvent;
     fDevices: TList;
     fLogicalDrives: TStringList;
     fWindowPointer: Pointer;
@@ -33,7 +35,6 @@ type
     procedure FillDevices;
     procedure HandleMessage(var Msg: TMessage); virtual; abstract;
     function SetMessageFilter: TDEV_BROADCAST_DEVICEINTERFACE; virtual; abstract;
-    procedure NotifyAll;
   public
     destructor Destroy; override;
     //These functions depend on device type
@@ -45,16 +46,14 @@ type
     function GetDeviceInfo(index: integer): TDevice; overload; virtual;
     function GetDeviceInfo(name: PChar): TDevice; overload; virtual;
     function GetDeviceCount: integer; virtual;
-    //These functions add event handlers from listeners
-    procedure AddHandler(Handler: TNotifyEvent);
-    procedure RemoveHandler(Handler: TNotifyEvent);
+    property NotifyEvent: TBroadcastNotifyEvent read fBroadcastEvent;
   end;
 
 {==============================================================================}
 implementation
 
 uses
-  SysUtils, WMI, ShellObjExtended, Volume, StrUtils, Drive;
+  SysUtils, WMI, ShellObjExtended, Volume, StrUtils, Drive, WinIoCtl;
 
 //Filters only necessary devices which match the type criteria
 function TDeviceManager.FilterVolumes(drivePath: PChar): boolean;
@@ -73,6 +72,21 @@ begin
       deviceMountPoint := bufStr[0];
       Delete(deviceMountPoint, Length(deviceMountPoint),1);
       {TODO: how to filter floppy drives?!?!}
+      {
+        SOLUTION:
+        IOCTL_STORAGE_GET_MEDIA_TYPES
+Operation
+Returns information about the geometry of floppy drives.
+
+Input
+Parameters.DeviceIoControl.OutputBufferLength in the I/O stack location of the
+IRP indicates the size, in bytes, of the buffer, which must be at least
+(NumberOfSupportedMediaTypes * sizeof(DISK_GEOMETRY)).
+
+Output
+The driver returns an array of DISK_GEOMETRY records for the types of media it
+supports in the buffer at Irp->AssociatedIrp.SystemBuffer.
+      }
       if QueryDosDevice(PChar(@deviceMountPoint[1]), PChar(@bufChar[0]), sizeof(bufChar)) = 0
       then begin
         raise EDeviceException.Create(SysErrorMessage(GetLastError));
@@ -199,7 +213,7 @@ begin
   end; //then - no devices were detected
   fVolumes.Destroy;
   fDrives.Destroy;
-  //NotifyAll;
+  fBroadcastEvent.Signal(nil);
 end; //FillDevices
 
 //This function registers this class for handling Windows messages
@@ -229,13 +243,11 @@ begin
   end; //then - it's a device notification
 end; //WndProc
 
-{TODO: how to refresh devices on a new start}
-
 {CONSTRUCTOR}
 constructor TDeviceManager.Create;
 begin
   inherited Create;
-  fEventHandlers := TList.Create;
+  fBroadcastEvent := TBroadcastNotifyEvent.Create;
   FillDevices;
   RegisterNotification;
 end;
@@ -245,15 +257,11 @@ destructor TDeviceManager.Destroy;
 var
   i: integer;
 begin
-  UnregisterDeviceNotification(fWindowPointer);
-  if Assigned(fEventHandlers)
+  if Assigned(fBroadcastEvent)
   then begin
-    for i := 0 to fEventHandlers.Count-1 do
-    begin
-      FreeMem(fEventHandlers.Items[i]);
-    end;
-    fEventHandlers.Free;
+    fBroadcastEvent.Destroy;
   end;
+  UnregisterDeviceNotification(fWindowPointer);
   if Assigned(fDevices)
   then begin
     for i := 0 to fDevices.Count-1 do
@@ -293,42 +301,7 @@ begin
   end;
 end; //GetDeviceInfo
 
-//Adds new listener to list
-procedure TDeviceManager.AddHandler(Handler: TNotifyEvent);
-begin
-  if (fEventHandlers.IndexOf(@Handler) = -1) //is not in the list
-  then begin
-    fEventHandlers.Add(@Handler);
-    Handler(self);
-  end;
-end;
-
-//Removes event listener
-procedure TDeviceManager.RemoveHandler(Handler: TNotifyEvent);
-begin
-  fEventHandlers.Remove(@Handler);
-end; //RemoveHandler
-
-//Notifies all listeners about changes in this object
-
 {TODO: Synchronize with a view object!!!}
-{TODO: fix invalid typecast}
-procedure TDeviceManager.NotifyAll;
-var
-  i, count: integer;
-  event: TNotifyEvent;
-begin
-  count := fEventHandlers.Count;
-  for i := 0 to count-1 do
-  begin
-    event := TNotifyEvent(fEventHandlers.Items[i]^);
-    if Assigned(event)
-    then begin
-      event(Self);
-    end;
-  end;
-end; //NotifyAll
-
 end.
 
 
