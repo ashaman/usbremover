@@ -19,6 +19,7 @@ type
     procedure ComboBox1Change(Sender: TObject);
     procedure FillDrives(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
     procedure AddInfo(Device: TDevice; Parent: TTreeNode);
   public
@@ -81,6 +82,11 @@ end;
 procedure TMainFrm.FormCreate(Sender: TObject);
 begin
   TUSBManager.GetManager.NotifyEvent.Attach(FillDrives);
+end;
+
+procedure TMainFrm.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  CoolTrayIcon1.IconVisible := false;
 end;
 
 end.

@@ -1,6 +1,7 @@
 {
-
+  TBroadcastEvent and TBroadcastNotifyEvent
   Uploader: Jerome Tremblay
+  Updated by: J.L. Blackrow
   Company: Popup! Solutions
 }
 unit BroadcastEvent;
@@ -107,6 +108,10 @@ var
 begin
   { Search fails by default, if there is a match, result will be updated. }
   Result := -1;
+  if FObservers.Count = 0
+  then begin
+    Exit;
+  end; //fixed by J.L.Blackrow
   for i := (FObservers.Count div 2)-1 downto 0 do
     begin
     { We have a match only if both the Code and Data pointers are the same. }
