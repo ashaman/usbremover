@@ -74,7 +74,7 @@ begin
       Delete(deviceMountPoint, Length(deviceMountPoint),1);
       {TODO: how to filter floppy drives?!?!}
       {
-        SOLUTION:
+        POSSIBLE SOLUTION:
         IOCTL_STORAGE_GET_MEDIA_TYPES
 Operation
 Returns information about the geometry of floppy drives.

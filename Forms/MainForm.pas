@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, USBManager, StdCtrls, Device, ComCtrls, ExtCtrls, SiteComp,
-  CoolTrayIcon, Menus;
+  CoolTrayIcon, Menus, JustOne;
 
 type
   TMainFrm = class(TForm)
@@ -16,11 +16,14 @@ type
     Label1: TLabel;
     CoolTrayIcon1: TCoolTrayIcon;
     PopupMenu1: TPopupMenu;
+    XJustOne1: TXJustOne;
     procedure ComboBox1Change(Sender: TObject);
     procedure FillDrives(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure CoolTrayIcon1DblClick(Sender: TObject);
   private
+    procedure PopupMenuClick(Sender: TObject);
     procedure AddInfo(Device: TDevice; Parent: TTreeNode);
   public
     { Public declarations }
@@ -34,6 +37,9 @@ implementation
 uses
   Volume, Drive;
 
+var
+  fullInfo: string;
+
 {$R *.dfm}
 
 
@@ -42,10 +48,34 @@ var
   i: integer;
   treeNode: TTreeNode;
 begin
+  if fullInfo <> ''
+  then begin
+    fullInfo := fullInfo + '-(' + Device.Description + ' '
+      + Device.FriendlyName + ')';
+  end
+  else begin
+    fullInfo := '(' + Device.Description + ' '
+      + Device.FriendlyName + ')';
+  end;
   treeNode := TreeView1.Items.AddChild(Parent, Device.Description + ' ' + Device.FriendlyName);
   for i := 0 to Device.Count-1 do
   begin
     AddInfo(Device.Children[i], treeNode);
+  end;
+end;
+
+procedure TMainFrm.PopupMenuClick(Sender: TObject);
+var
+  count: Integer;
+begin
+  count := TUSBManager.GetManager.GetDeviceCount;
+  TUSBManager.GetManager.RemoveDrive(PopupMenu1.Items.IndexOf(Sender as TMenuItem));
+  if count > TUSBManager.GetManager.GetDeviceCount
+  then begin
+    CoolTrayIcon1.ShowBalloonHint('Completed!','Device detached!', bitInfo, 15);
+  end
+  else begin
+    CoolTrayIcon1.ShowBalloonHint('Failed!','Cannot remove device', bitError, 15);
   end;
 end;
 
@@ -59,6 +89,7 @@ var
 begin
   rm := TUSBManager.GetManager;
   tmItem := TMenuItem.Create(nil);
+  tmItem.OnClick := PopupMenuClick;
   ComboBox1.Items.Clear;
   TreeView1.Items.Clear;
   PopupMenu1.Items.Clear;
@@ -66,17 +97,28 @@ begin
   for i := 0 to rm.GetDeviceCount-1 do
   begin
     device := rm.GetDeviceInfo(i);
-    ComboBox1.Items.Add(device.Description);
-    tmItem.Caption := device.Description;
-    PopupMenu1.Items.Add(tmItem);
+    fullInfo := '';
     AddInfo(device, treeNode);
+    tmItem.Caption := fullInfo;
+    PopupMenu1.Items.Add(tmItem);
+    ComboBox1.Items.Add(fullInfo);
     ComboBox1.ItemIndex := 0;
   end;
 end;
 
 procedure TMainFrm.ComboBox1Change(Sender: TObject);
+var
+  count: Integer;
 begin
+  count := TUSBManager.GetManager.GetDeviceCount;
   TUSBManager.GetManager.RemoveDrive(ComboBox1.ItemIndex);
+  if count > TUSBManager.GetManager.GetDeviceCount
+  then begin
+    CoolTrayIcon1.ShowBalloonHint('Completed!','Device detached!', bitInfo, 15);
+  end
+  else begin
+    CoolTrayIcon1.ShowBalloonHint('Failed!','Cannot remove device', bitError, 15);
+  end;
 end;
 
 procedure TMainFrm.FormCreate(Sender: TObject);
@@ -87,6 +129,11 @@ end;
 procedure TMainFrm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   CoolTrayIcon1.IconVisible := false;
+end;
+
+procedure TMainFrm.CoolTrayIcon1DblClick(Sender: TObject);
+begin
+  Show;
 end;
 
 end.
