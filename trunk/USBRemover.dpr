@@ -1,8 +1,8 @@
 {
   USB Safely Remover
   Application developed by CS-VSU student Yaroslav Vorontsov
-    a.k.a J.L. Blackrow
-  Freeware
+    a.k.a. J.L. Blackrow
+  This program is freeware
 }
 
 program USBRemover;

@@ -161,6 +161,7 @@ procedure TUSBManager.RemoveDrive(device: TDevice);
 var
   vetoName: TCharArray; //the reason of the fail of ejection
 begin
+  ZeroMemory(@vetoName[0],sizeof(vetoName));
   try
     //trying to eject the device
     if CM_Request_Device_EjectA(device.InstanceHandle, nil, PWideChar(@vetoName[0]),
