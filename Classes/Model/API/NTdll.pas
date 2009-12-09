@@ -1,11 +1,11 @@
-unit NTdll;
+unit NTDLL;
 
 interface
 
 uses
-  Windows, SysUtils;
+  Windows;
 
-  type
+type
   NT_STATUS = Cardinal;
 
   TFileDirectoryInformation = packed record
@@ -45,7 +45,7 @@ uses
   SYSTEM_PROCESS_INFORMATION = packed record
     NextOffset: ULONG;
     ThreadCount: ULONG;
-    //Reserved1: array [0..5] of ULONG; // Что такое, пока не понятно...
+    Reserved1: array [0..5] of ULONG; // Что такое, пока не понятно...
     CreateTime: FILETIME;
     UserTime: FILETIME;
     KernelTime: FILETIME;
@@ -56,7 +56,7 @@ uses
     ProcessID: ULONG;
     InheritedFromUniqueProcessID: ULONG;
     HandleCount: ULONG;
-    //Reserved2 : array[0..1] of ULONG; // Что такое, пока не понятно...
+    Reserved2 : array[0..1] of ULONG; // Что такое, пока не понятно...
     PeakVirtualSize : ULONG;
     VirtualSize : ULONG;
     PageFaultCount : ULONG;
@@ -136,7 +136,6 @@ const
   SystemProcessesAndThreadsInformation = 5;
   SystemHandleInformation = 16;
 
-  
   function ZwQuerySystemInformation(ASystemInformationClass: DWORD;
     ASystemInformation: Pointer; ASystemInformationLength: DWORD;
     AReturnLength: PDWORD): NT_STATUS; stdcall; external 'ntdll.dll';
@@ -154,7 +153,7 @@ const
   function GetLongPathNameA(lpszShortPath, lpszLongPath: PChar;
     cchBuffer: DWORD): DWORD; stdcall; external kernel32;
 
+
 implementation
 
 end.
- 
