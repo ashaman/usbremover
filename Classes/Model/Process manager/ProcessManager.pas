@@ -1,3 +1,8 @@
+{
+  Process manager class.
+  Made as singleton
+  Ported from the C code published on WWW.WASM.RU
+}
 unit ProcessManager;
 
 interface
@@ -6,6 +11,7 @@ uses
   Classes, Windows;
 
 type
+  //Process manager class
   TProcessManager = class(TObject)
   private
     function GetSystemInformationTable(TableType: Cardinal): Pointer;
@@ -14,7 +20,7 @@ type
     function GetHandleType: byte;
     constructor Create;
   public
-    function GetLockers(Drives: TStringList): TList;
+    function GetLockers(Drives: TStringList; ProgressCallback: TNotifyEvent): TList;
     class function GetInstance: TProcessManager;
   end;
 
@@ -22,7 +28,7 @@ type
 implementation
 
 uses
-  NTDLL, SysUtils;
+  NTDLL, SysUtils, Forms;
 
 type
   TCharArray = array [0..MAX_PATH] of char;
@@ -30,8 +36,8 @@ type
 var
   instance: TProcessManager; //singleton variable
 
-//Thread routine
-function GetFileName(Parameters: Pointer): Cardinal;
+//Thread routine. Called by the thread in TProcessManager.GetFileNameFromHandle
+function GetFileName(Parameters: Pointer): Cardinal; stdcall;
 var
   fileNameInfo: FILE_NAME_INFORMATION; //file name info
   ioStatusBlock: IO_STATUS_BLOCK; //I/O status block
@@ -40,18 +46,20 @@ var
   dummy: Cardinal;
 begin
   //initialization
-  threadParameters := PGetFileNameThreadParam(Parameters)^;
+  threadParameters := TGetFileNameThreadParam(Parameters^);
   ZeroMemory(@fileNameInfo, sizeof(fileNameInfo));
-  Result := 0;
+  //query for the handle information - because hanlde may not point to the file
   Result := NtQueryInformationFile(threadParameters.hFile, @ioStatusBlock,
     @fileNameInfo, 2*MAX_PATH, FileNameInformation);
   if Result = STATUS_SUCCESS
   then begin
+    //secont query for the NT Query Object
     Result := NtQueryObject(threadParameters.hFile, ObjectNameInformation,
       @objectInfo, 2*MAX_PATH, @dummy);
     if Result = STATUS_SUCCESS
     then begin
       threadParameters.Status := Result;
+      //converting PWideChar to TCharArray
       WideCharToMultiByte(CP_ACP, 0,
         @objectInfo.Name.Buffer[objectInfo.Name.MaximumLength - objectInfo.Name.Length],
         objectInfo.Name.Length, PChar(@threadParameters.Data[0]), MAX_PATH,
@@ -64,7 +72,7 @@ begin
         ioStatusBlock.Information, PChar(@threadParameters.Data[0]), MAX_PATH,
         nil, nil);
     end; //else - other statuses
-  end; //then - successfull call
+  end; //then - successfully got info about the file handle
   //returning parameters
   PGetFileNameThreadParam(Parameters)^ := threadParameters;
   ExitThread(Result);
@@ -72,8 +80,39 @@ end; //GetFileName
 
 //This function gets file name from the handle
 function TProcessManager.GetFileNameFromHandle(Handle: THandle): String;
+var
+  thread: THandle; //thread handle;
+  parameters: TGetFileNameThreadParam; //thread parameters
+  exitCode: Cardinal; //thread exit code
+  threadId: Cardinal; //therad id
 begin
-
+  Result := '';
+  ZeroMemory(@parameters, sizeof(parameters));
+  parameters.hFile := Handle;
+  thread := CreateThread(nil, 0, @GetFileName, @parameters, 0, threadId);
+  if thread = INVALID_HANDLE_VALUE
+  then begin
+  end //then - creation failed
+  else begin
+    try
+      case WaitForSingleObject(thread, 200) of
+        WAIT_OBJECT_0:
+          begin
+            GetExitCodeThread(thread, exitCode);
+            if exitCode = STATUS_SUCCESS
+            then begin
+              Result := parameters.Data;
+            end; //successfully
+          end; //WAIT
+        WAIT_TIMEOUT:
+          begin
+            TerminateThread(handle, 0);
+          end; //TIMEOUT
+      end; //case
+    finally
+      CloseHandle(thread);
+    end; //finally
+  end; //else - thread created
 end; //GetFileNameFromFileHandle
 
 //This function gets system information table
@@ -83,8 +122,7 @@ var
   status: Cardinal; //function status
   bufferSize: Cardinal; //buffer size
 begin
-  Result := nil;
-  bufferSize := Cardinal(-1);
+  bufferSize := 1;
   repeat
     buffer := AllocMem(bufferSize);
     //using ZwQuerySystemInformation
@@ -95,15 +133,87 @@ begin
       bufferSize := bufferSize*2;
     end; //then - buffer is too little
   until status <> STATUS_INFO_LENGTH_MISMATCH;
+  Result := buffer;
 end; //GetSystemInformationTable
 
-
-function TProcessManager.GetLockers(Drives: TStringList): TList;
+//This function gets all the processes blocking files on the flash and
+//returns the list op TProcess values
+//If the callback is specified, this function notifies aboout the percentage of
+//processed work
+function TProcessManager.GetLockers(Drives: TStringList;
+  ProgressCallback: TNotifyEvent): TList;
+var
+  fileType: Cardinal; //file type on NT OS
+  systemInformation: PSYSTEM_PROCESS_INFORMATION; //process information
+  handleInformation: PSYSTEM_HANDLE_INFORMATION_EX; //system handle information
+  i: integer; //loop index
+  processHandle: THandle; //process handle
+  fileHandle: THandle; //file handle
+  filePath: string; //file path
 begin
   Result := TList.Create;
+  //getting file type on the current system
+  fileType := GetHandleType;
+  //getting system information about processes and threads
+  systemInformation := GetSystemInformationTable(SystemProcessesAndThreadsInformation);
+  if systemInformation = nil
+  then begin
+    raise Exception.Create('OLOLO');
+  end //then
+  else begin
+    try
+      //getting system 
+      handleInformation := GetSystemInformationTable(SystemHandleInformation);
+      if handleInformation = nil
+      then begin
+        raise Exception.Create('OLOLO! OLOLO!');
+      end //then
+      else begin
+        try
+          for i := 0 to handleInformation^.NumberOfHandles-1 do
+          begin
+            if handleInformation^.Information[i].ObjectTypeNumber = fileType
+            then begin
+              processHandle := OpenProcess(PROCESS_DUP_HANDLE, true,
+                handleInformation^.Information[i].ProcessId);
+              if processHandle > 0
+              then begin
+                try
+                  if DuplicateHandle(processHandle,
+                    handleInformation^.Information[i].ProcessId,
+                    GetCurrentProcess, @fileHandle, 0, false,
+                    DUPLICATE_SAME_ACCESS)
+                  then begin
+                    try
+                      filePath := GetFileNameFromHandle(fileHandle);
+                      filePath := filePath + 'ololo';
+                    finally
+                      CloseHandle(fileHandle);
+                    end; //finally
+                  end; //then - process handle duplicated
+                finally
+                  CloseHandle(processHandle);
+                end; //finally
+              end; //then - opened process
+            end; //then - handle is process
+            Application.ProcessMessages;
+            if Assigned(ProgressCallback)
+            then begin
+              ProgressCallback(TObject(Round(100*i/handleInformation^.NumberOfHandles)));
+            end; //then - callback call
+          end; //for-loop
+        finally
+          FreeMem(handleInformation);
+        end; //finally
+      end; //else
+    finally
+      FreeMem(systemInformation);
+    end; //finally
+  end; //else
 end; //GetLockers
 
 //This function gets file handle type using the NUL device
+//The first problem
 function TProcessManager.GetHandleType: byte;
 var
   handle: THandle; //NUL device handle
@@ -123,7 +233,7 @@ begin
       systemHandleInfo := GetSystemInformationTable(SystemHandleInformation);
       if not Assigned(systemHandleInfo)
       then begin
-        raise Exception.Create('NullPointer exception');
+        raise Exception.Create(SysErrorMessage(GetLastError));
       end //then - not assigned
       else begin
         try
@@ -166,10 +276,10 @@ var
 begin
   Result := false;
   //here we get debugger privileges
-  if OpenProcessToken(GetCurrentProcess, TOKEN_ADJUST_PRIVILEGES or TOKEN_QUERY,
+  if not OpenProcessToken(GetCurrentProcess, TOKEN_ADJUST_PRIVILEGES or TOKEN_QUERY,
     handle)
   then begin
-    raise Exception.Create('Cannot adjust debugger privileges!');
+    raise Exception.Create(SysErrorMessage(GetLastError));
   end
   else begin
     if LookupPrivilegeValue(nil, PChar('SeDebugPrivilege'),
