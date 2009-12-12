@@ -31,3 +31,6 @@ Ok, the development is in progress... I hope we'll finish the model until the en
 
 0:09 04.12.2009
 YEAH!!! I detect device arrivals and removals!!! But there's one great problem... VCL forms does not permit to call their methods from another thread
+
+10:42 12.12.2009
+Some improvements were done in process manager
