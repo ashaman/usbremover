@@ -7,7 +7,7 @@ unit USBDevice;
 interface
 
 uses
-  Device;
+  Device, Classes;
 
 type
   TUSBDevice = class(TDevice)

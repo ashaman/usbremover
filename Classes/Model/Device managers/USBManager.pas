@@ -41,7 +41,7 @@ implementation
 
 uses
   SysUtils, WMI, ShlObj, ShellObjExtended, WinIOCtl, DeviceException,
-  USBDevice;
+  USBDevice, ProcessManager, Volume;
 
 var
   Instance: TUSBManager;
@@ -169,12 +169,16 @@ begin
     then begin
       if vetoName = ''
       then begin
+        //device was successfully ejected
         //notifying all the windows
         device.NotifySystem;
         fDevices.Remove(device);
         device.Destroy;
         fBroadcastEvent.Signal(nil);
-      end; //then
+      end //then - device was ejected
+      else begin
+        TProcessManager.GetInstance.GetLockers(device.MountPoints, nil);
+      end; //
     end //then - ejection succeeded
     else begin
       raise EDeviceException.Create(SysErrorMessage(GetLastError));
@@ -217,7 +221,6 @@ begin
       s := String(PChar(@PDEV_BROADCAST_DEVICEINTERFACE(Msg.LParam)^.dbcc_name[0]));
       if Pos(USBDevicePath, s) <> 0
       then begin
-        {TODO: try to use Delphi thread with critical section?}
         BeginThread(nil, 0, @TUSBManager.InvokeOnInstallation,
           nil, 0, PDWORD(nil)^);
       end; //then - USB device arrived, need to add to list

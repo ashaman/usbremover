@@ -14,6 +14,8 @@ type
   //Process manager class
   TProcessManager = class(TObject)
   private
+    fProcesses: TList;
+    procedure AddProcessFilePair(ProcessName: String; ProcessHandle: THandle; FileName: String);
     function GetSystemInformationTable(TableType: Cardinal): Pointer;
     function GetFileNameFromHandle(Handle: THandle): String;
     function GetDebuggerPrivileges: boolean;
@@ -22,19 +24,50 @@ type
   public
     function GetLockers(Drives: TStringList; ProgressCallback: TNotifyEvent): TList;
     class function GetInstance: TProcessManager;
+    property BlockerProcesses: TList read fProcesses;
   end;
 
 //============================================================================//
 implementation
 
 uses
-  NTDLL, SysUtils, Forms;
-
-type
-  TCharArray = array [0..MAX_PATH] of char;
+  NTDll, SysUtils, Forms, WinIOCtl, Process;
 
 var
   instance: TProcessManager; //singleton variable
+
+//This function adds process-file pair to the processes list
+procedure TProcessManager.AddProcessFilePair(ProcessName: String;
+  ProcessHandle: THandle; FileName: String);
+var
+  i: integer; //loop index
+  found: boolean; //boolean flag
+  tempProcess: TProcess; //temporary value for the process
+begin
+  i := 0;
+  found := false;
+  //searching process by its name
+  while (i <= fProcesses.Count-1) and (not found) do
+  begin
+    tempProcess := TProcess(fProcesses.Items[i]);
+    //if the process was found, we try to find the specified file name
+    if tempProcess.Name = ProcessName
+    then begin
+      found := true;
+      tempProcess.OpenedFiles.Add(FileName);
+    end //then - process was found
+    else begin
+      Inc(i);
+    end; //else - searching
+  end; //while
+  if not found
+  then begin
+    //adding new process to the process list
+    tempProcess := TProcess.Create(ProcessHandle, ProcessName);
+    tempProcess.OpenedFiles.Add(FileName);
+    fProcesses.Add(tempProcess);
+  end; //then - process was not in the process list, created
+end; //AddProcessFilePair
 
 //Thread routine. Called by the thread in TProcessManager.GetFileNameFromHandle
 function GetFileName(Parameters: Pointer): Cardinal; stdcall;
@@ -67,7 +100,7 @@ begin
     end //then - status indicates successful ending of operation
     else begin
       Result := STATUS_SUCCESS;
-      threadParameters.Status := Result;
+      threadParameters.Status := STATUS_SUCCESS;
       WideCharToMultiByte(CP_ACP, 0, PWideChar(@fileNameInfo.FileName[0]),
         ioStatusBlock.Information, PChar(@threadParameters.Data[0]), MAX_PATH,
         nil, nil);
@@ -79,6 +112,11 @@ begin
 end; //GetFileName
 
 //This function gets file name from the handle
+//Its implementation uses threads because some of files in system are pipes,
+//and when attached to a named pipe, your process may "hang" waiting for the
+//pipe to be filled. So, we run the GetFileName function in a separate thread
+//and check it after 200 milliseconds. If its work has finished - all is OK,
+//otherwise, we kill the thread and exit this function
 function TProcessManager.GetFileNameFromHandle(Handle: THandle): String;
 var
   thread: THandle; //thread handle;
@@ -95,7 +133,9 @@ begin
   end //then - creation failed
   else begin
     try
-      case WaitForSingleObject(thread, 200) of
+      //starting thread and waiting until it finishes its work or it's
+      //out of time
+      case WaitForSingleObject(thread, 100) of
         WAIT_OBJECT_0:
           begin
             GetExitCodeThread(thread, exitCode);
@@ -116,6 +156,7 @@ begin
 end; //GetFileNameFromFileHandle
 
 //This function gets system information table
+//Type of table is specified using the TableType parameter
 function TProcessManager.GetSystemInformationTable(TableType: Cardinal): Pointer;
 var
   buffer: Pointer; //buffer for function call
@@ -150,53 +191,87 @@ var
   processHandle: THandle; //process handle
   fileHandle: THandle; //file handle
   filePath: string; //file path
+  processName: string; //blocker name
+  tmpSysInfo: PSYSTEM_PROCESS_INFORMATION; //temporary pointer
 begin
-  Result := TList.Create;
   //getting file type on the current system
   fileType := GetHandleType;
   //getting system information about processes and threads
   systemInformation := GetSystemInformationTable(SystemProcessesAndThreadsInformation);
   if systemInformation = nil
   then begin
-    raise Exception.Create('OLOLO');
+    raise Exception.Create('Failed to get information about processes');
   end //then
   else begin
     try
-      //getting system 
+      //getting system
       handleInformation := GetSystemInformationTable(SystemHandleInformation);
       if handleInformation = nil
       then begin
-        raise Exception.Create('OLOLO! OLOLO!');
+        raise Exception.Create('Failed to get information about handles');
       end //then
       else begin
         try
+          //loop over all the handles in system
           for i := 0 to handleInformation^.NumberOfHandles-1 do
           begin
+            //in this handle is a file handle
             if handleInformation^.Information[i].ObjectTypeNumber = fileType
             then begin
+              //we duplicate the handle of the owning process
               processHandle := OpenProcess(PROCESS_DUP_HANDLE, true,
                 handleInformation^.Information[i].ProcessId);
+              //if it was successful...
               if processHandle > 0
               then begin
                 try
+                  //then we duplicate the handles
                   if DuplicateHandle(processHandle,
-                    handleInformation^.Information[i].ProcessId,
+                    handleInformation^.Information[i].Handle, //FIXED BUG!!!
                     GetCurrentProcess, @fileHandle, 0, false,
                     DUPLICATE_SAME_ACCESS)
                   then begin
+                    //if the previous operation was successful...
                     try
+                      //we get file name from the handle
                       filePath := GetFileNameFromHandle(fileHandle);
-                      filePath := filePath + 'ololo';
+                      //and if it's not empty...
+
+                      {TODO: translate drive path to the disk path}
+
+                      if filePath <> ''
+                      then begin
+                        //we try to find its blocker
+                        tmpSysInfo := systemInformation;
+                        while (tmpSysInfo^.NextOffset <> 0) do
+                        begin
+                          //if handles are matching...
+                          if tmpSysInfo^.ProcessID =
+                            handleInformation^.Information[i].ProcessId
+                          then begin
+                            //voila! we found the blocker
+                            processName := tmpSysInfo^.ModuleName;
+                            //and we add it to the list
+                            AddProcessFilePair(processName,
+                              tmpSysInfo^.ProcessID, filePath);
+                            break;
+                          end; //then - we found file's blocker
+                          tmpSysInfo := Ptr(Cardinal(tmpSysInfo)
+                            + tmpSysInfo^.NextOffset);
+                        end; //while
+                      end; //then - file path is not empty
+                      //filePath := filePath + 'ololo';
                     finally
                       CloseHandle(fileHandle);
-                    end; //finally
+                    end; //finally - closing file handle
                   end; //then - process handle duplicated
                 finally
                   CloseHandle(processHandle);
                 end; //finally
               end; //then - opened process
-            end; //then - handle is process
+            end; //then - handle is file handle
             Application.ProcessMessages;
+            //progress callback
             if Assigned(ProgressCallback)
             then begin
               ProgressCallback(TObject(Round(100*i/handleInformation^.NumberOfHandles)));
@@ -204,16 +279,17 @@ begin
           end; //for-loop
         finally
           FreeMem(handleInformation);
-        end; //finally
-      end; //else
+        end; //finally - free handle information memory
+      end; //else - successfully got handle information
     finally
       FreeMem(systemInformation);
-    end; //finally
-  end; //else
+    end; //finally - free processes information memory
+  end; //else - successfully got processes information
+  Result := fProcesses;
 end; //GetLockers
 
 //This function gets file handle type using the NUL device
-//The first problem
+//It solves the first problem - getting file type on different systems
 function TProcessManager.GetHandleType: byte;
 var
   handle: THandle; //NUL device handle
@@ -260,6 +336,7 @@ begin
   end; //else - getting info table and saving NUL
 end; //GetHandleType
 
+{SINGLETON METHOD}
 class function TProcessManager.GetInstance;
 begin
   if not Assigned(instance)
@@ -269,6 +346,8 @@ begin
   Result := instance;
 end; //GetInstance
 
+//This function gets the debugger privileges in order to allow this process to
+//attach to others
 function TProcessManager.GetDebuggerPrivileges;
 var
   handle: THandle; //process handle
@@ -280,7 +359,7 @@ begin
     handle)
   then begin
     raise Exception.Create(SysErrorMessage(GetLastError));
-  end
+  end //then - failed to get current process
   else begin
     if LookupPrivilegeValue(nil, PChar('SeDebugPrivilege'),
       privileges.Privileges[0].Luid)
@@ -289,12 +368,15 @@ begin
       privileges.Privileges[0].Attributes := SE_PRIVILEGE_ENABLED;
       Result := AdjustTokenPrivileges(handle, false, privileges, 0,
         PTokenPrivileges(nil)^, PDWORD(nil)^);
-    end; //then - lookup privileges
+    end; //then - lookup privileges and setting them to the appropriate state
   end; //else - OpenProcessToken
-end;
+end; //GetDebuggerPrivileges
 
+{CONSTRUCTOR}
 constructor TProcessManager.Create;
 begin
+  inherited Create;
+  fProcesses := TList.Create;
   GetDebuggerPrivileges;
 end; //Create
 

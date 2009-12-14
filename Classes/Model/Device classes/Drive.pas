@@ -8,7 +8,7 @@ unit Drive;
 interface
 
 uses
-  Device;
+  Device, Classes;
 
 type
   //Disk device class

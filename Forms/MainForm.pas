@@ -35,13 +35,12 @@ var
 implementation
 
 uses
-  Volume, Drive;
+  Volume, Drive, ProcessManager, Process;
 
 var
   fullInfo: string;
 
 {$R *.dfm}
-
 
 procedure TMainFrm.AddInfo(Device: TDevice; Parent: TTreeNode);
 var
@@ -109,6 +108,9 @@ end;
 procedure TMainFrm.ComboBox1Change(Sender: TObject);
 var
   count: Integer;
+  i,j: integer;
+  tmp: TProcess;
+  tnode: TTreeNode;
 begin
   count := TUSBManager.GetManager.GetDeviceCount;
   TUSBManager.GetManager.RemoveDrive(ComboBox1.ItemIndex);
@@ -117,6 +119,17 @@ begin
     CoolTrayIcon1.ShowBalloonHint('Completed!','Device detached!', bitInfo, 15);
   end
   else begin
+    TreeView1.Items.Clear;
+    count := TProcessManager.GetInstance.BlockerProcesses.Count;
+    for i := 0 to count-1 do
+    begin
+      tmp := TProcess(TProcessManager.GetInstance.BlockerProcesses.Items[i]);
+      tnode := TreeView1.Items.AddChild(nil, tmp.Name);
+      for j := 0 to tmp.OpenedFiles.Count-1 do
+      begin
+        TreeView1.Items.AddChild(tnode, tmp.OpenedFiles.Strings[j]);
+      end;
+    end;
     CoolTrayIcon1.ShowBalloonHint('Failed!','Cannot remove device', bitError, 15);
   end;
 end;
