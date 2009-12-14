@@ -21,7 +21,10 @@ uses
   Drive in 'Classes\Model\Device classes\Drive.pas',
   USBDevice in 'Classes\Model\Device classes\USBDevice.pas',
   Dbt in 'Classes\Model\API\Dbt.pas',
-  BroadcastEvent in 'Classes\Controller\BroadcastEvent.pas';
+  BroadcastEvent in 'Classes\Controller\BroadcastEvent.pas',
+  ProcessManager in 'Classes\Model\Process manager\ProcessManager.pas',
+  NTDLL in 'Classes\Model\API\NTdll.pas',
+  Process in 'Classes\Model\Process\Process.pas';
 
 {$R *.res}
 begin

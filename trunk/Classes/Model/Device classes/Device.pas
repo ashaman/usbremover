@@ -29,7 +29,7 @@ type
   //Device class
   TDevice = class(TObject)
   private
-    fCapabilities: {Cardinal;} TdeviceCapabilities; //device capabilities
+    fCapabilities: {Cardinal;} TDeviceCapabilities; //device capabilities
     fClassGUID: TGUID; //class GUID
     fDescription: string; //device description string
     fDeviceClassName: string; //class name
@@ -57,6 +57,7 @@ type
     function GetBusType(Path: string): TBusType;
     function GetDeviceProperty(DeviceInformation: TDeviceInfoData;
       PropertyCode: integer; DeviceInfoSet: THandle; ValueKind: TValueKind): PByte;
+    function GetMountPoints: TStringList; virtual; //ADDED LATELY!
     constructor Create(ClassGUID: TGUID; Path: string); overload;
     constructor Create(ClassGUID: TGUID; InstanceHandle: Cardinal); overload;
   public
@@ -73,6 +74,7 @@ type
     property FriendlyName: string read fFriendlyName;
     property InstanceHandle: THandle read GetInstanceHandle;
     property Manufacturer: string read fManufacturer;
+    property MountPoints: TStringList read GetMountPoints;
     property Parent: TDevice read fParent;
     class function FormatDevicePath(const Path: string): string;
   end;
@@ -81,6 +83,18 @@ implementation
 
 uses
   Windows, DeviceException, SysUtils;
+
+//This function implements abstract member of TDevice class
+function TDevice.GetMountPoints: TStringList;
+var
+  i: integer; //loop index
+begin
+  Result := TStringList.Create;
+  for i := 0 to fChildren.Count-1 do
+  begin
+    Result.AddStrings(TDevice(fChildren.Items[i]).GetMountPoints);
+  end;
+end; //GetMountPoints
 
 //This procedure adds a new device to children list
 procedure TDevice.AddChild(Device: TDevice);
@@ -400,7 +414,7 @@ begin
     fChildren.Free;
   end;
   inherited Destroy;
-end;
+end; //Destroy
 
 end.
 

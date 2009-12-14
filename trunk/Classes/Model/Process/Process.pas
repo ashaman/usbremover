@@ -1,44 +1,45 @@
+{
+  Process data class
+  Contains data about the process and files opened by it
+  Developed by J.L. Blackrow
+}
 unit Process;
 
 interface
 
 uses
-  Classes, WbemScripting_TLB, OleServer, ActiveX, NTdll;
+  Classes;
 
 type
   TProcess = class(TObject)
   private
-    p_name: string;
-    //execPath: string;
-    p_handle: integer;
-    p_files: TList;
+    fHandle: THandle;
+    fName: string;
+    fOpenedFiles: TStringList;
   public
-    constructor Create(g_name: string; g_handle: integer); overload;
-    constructor Create(); overload;
+    constructor Create(Handle: THandle; ProcessName: string);
     destructor Destroy; override;
-    property Name: string read p_name write p_name;
-    property Handle: integer read p_handle write p_handle;
-    property Files: TList read p_files write p_files;
+    property Handle: THandle read fHandle;
+    property Name: string read fName;
+    property OpenedFiles: TStringList read fOpenedFiles;
 end;
 
 implementation
-constructor TProcess.Create(g_name: string; g_handle: integer);
-begin
-  name := g_name;
-  handle := g_handle;
-  inherited Create;
-end;
 
-constructor TProcess.Create;
+{CONSTRUCTOR}
+constructor TProcess.Create(Handle: THandle; ProcessName: String);
 begin
-  name := '';
-  handle := -1;
   inherited Create;
-end;
+  fHandle := Handle;
+  fName := ProcessName;
+  fOpenedFiles := TStringList.Create;
+end; //Create
 
+{DESTRUCTOR}
 destructor TProcess.Destroy;
 begin
+  fOpenedFiles.Free;
   inherited Destroy;
-end;
+end; //Destroy
 
 end.

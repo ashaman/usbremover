@@ -22,6 +22,8 @@ type
     function GetDiskNumbers(Path: string): TList; //<Cardinal> - gets volume disk numbers
     procedure GetVolumeInfo; //gets volume information
     function GetVolumeSize(Path: string): Int64; //gets volume size
+  protected
+    function GetMountPoints: TStringList; override;
   public
     constructor Create(Path: string);
     destructor Destroy; override;
@@ -41,6 +43,12 @@ implementation
 
 uses
   WinIOCtl, Windows, DeviceException, SysUtils, WMI, ShellObjExtended, ShlObj;
+
+//This function overrides the TDevice member
+function TVolume.GetMountPoints: TStringList;
+begin
+  Result := fVolumeRootDirectories;
+end; //GetMountPoints
 
 //This function hets total disk count where this volume is mounted
 function TVolume.GetDiskCount: Cardinal;
