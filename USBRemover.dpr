@@ -5,6 +5,14 @@
   This program is freeware
 }
 
+{
+  TODO: forms, controllers, process killing and adequate info output
+}
+
+{
+  TODO: implement as system service
+}
+
 program USBRemover;
 
 uses

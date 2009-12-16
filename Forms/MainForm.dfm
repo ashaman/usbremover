@@ -19,7 +19,7 @@ object MainFrm: TMainFrm
     Left = 0
     Top = 0
     Width = 708
-    Height = 57
+    Height = 105
     Align = alTop
     TabOrder = 0
     object Label1: TLabel
@@ -28,6 +28,13 @@ object MainFrm: TMainFrm
       Width = 124
       Height = 13
       Caption = 'Select the drive to remove'
+    end
+    object Label2: TLabel
+      Left = 16
+      Top = 64
+      Width = 90
+      Height = 13
+      Caption = 'Operation Progress'
     end
     object ComboBox1: TComboBox
       Left = 16
@@ -38,12 +45,20 @@ object MainFrm: TMainFrm
       TabOrder = 0
       OnChange = ComboBox1Change
     end
+    object ProgressBar1: TProgressBar
+      Left = 16
+      Top = 80
+      Width = 681
+      Height = 17
+      Step = 5
+      TabOrder = 1
+    end
   end
   object Panel2: TPanel
     Left = 0
-    Top = 57
+    Top = 105
     Width = 708
-    Height = 432
+    Height = 384
     Align = alClient
     Caption = 'Panel2'
     TabOrder = 1
@@ -51,7 +66,7 @@ object MainFrm: TMainFrm
       Left = 1
       Top = 1
       Width = 706
-      Height = 430
+      Height = 382
       Align = alClient
       Indent = 19
       TabOrder = 0

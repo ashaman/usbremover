@@ -16,6 +16,7 @@ type
   private
     fProcesses: TList;
     procedure AddProcessFilePair(ProcessName: String; ProcessHandle: THandle; FileName: String);
+    function AssociateMountPointsAndDrives(Points: TStringList): TStringList;
     function GetSystemInformationTable(TableType: Cardinal): Pointer;
     function GetFileNameFromHandle(Handle: THandle): String;
     function GetDebuggerPrivileges: boolean;
@@ -35,6 +36,26 @@ uses
 
 var
   instance: TProcessManager; //singleton variable
+
+//This procedure associates drive mount points and physical drives
+function TProcessManager.AssociateMountPointsAndDrives(Points: TStringList): TStringList;
+var
+  i: integer; //loop counter
+  buf: TCharArray; //buffer
+  s: string; //buffer string
+begin
+  Result := TStringList.Create;
+  for i := 0 to Points.Count-1 do
+  begin
+    s := Points.Strings[i];
+    Delete(s, Length(s), 1);
+    if QueryDosDevice(PChar(@s[1]), PChar(@buf[0]), sizeof(buf)) <> 0
+    then begin
+      Result.AddObject(Points.Strings[i],TObject(Trim(String(buf))));
+    end; //then - device alias
+  end; //loop
+  //Points.Free;
+end; //AssociateMountPointsAndDrives
 
 //This function adds process-file pair to the processes list
 procedure TProcessManager.AddProcessFilePair(ProcessName: String;
@@ -187,16 +208,20 @@ var
   fileType: Cardinal; //file type on NT OS
   systemInformation: PSYSTEM_PROCESS_INFORMATION; //process information
   handleInformation: PSYSTEM_HANDLE_INFORMATION_EX; //system handle information
-  i: integer; //loop index
+  i, j: integer; //loop index
   processHandle: THandle; //process handle
   fileHandle: THandle; //file handle
   filePath: string; //file path
   processName: string; //blocker name
   tmpSysInfo: PSYSTEM_PROCESS_INFORMATION; //temporary pointer
+  drivePos: integer; //position of drive string
+  buf: string; //buffer string
+  tmpDrives: TStringList;
 begin
   //getting file type on the current system
   fileType := GetHandleType;
   //getting system information about processes and threads
+  tmpDrives := AssociateMountPointsAndDrives(Drives);
   systemInformation := GetSystemInformationTable(SystemProcessesAndThreadsInformation);
   if systemInformation = nil
   then begin
@@ -236,31 +261,38 @@ begin
                       //we get file name from the handle
                       filePath := GetFileNameFromHandle(fileHandle);
                       //and if it's not empty...
-
-                      {TODO: translate drive path to the disk path}
-
                       if filePath <> ''
                       then begin
-                        //we try to find its blocker
-                        tmpSysInfo := systemInformation;
-                        while (tmpSysInfo^.NextOffset <> 0) do
+                        for j := 0 to tmpDrives.Count-1 do
                         begin
-                          //if handles are matching...
-                          if tmpSysInfo^.ProcessID =
-                            handleInformation^.Information[i].ProcessId
+                          buf := String(tmpDrives.Objects[j]);
+                          drivePos := Pos(buf, filePath);
+                          if drivePos = 1
                           then begin
-                            //voila! we found the blocker
-                            processName := tmpSysInfo^.ModuleName;
-                            //and we add it to the list
-                            AddProcessFilePair(processName,
-                              tmpSysInfo^.ProcessID, filePath);
+                            Delete(filePath, drivePos, Length(buf)+1);
+                            filePath := tmpDrives.Strings[j]+filePath;
+                            //we try to find its blocker
+                            tmpSysInfo := systemInformation;
+                            while (tmpSysInfo^.NextOffset <> 0) do
+                            begin
+                              //if handles are matching...
+                              if tmpSysInfo^.ProcessID =
+                                handleInformation^.Information[i].ProcessId
+                              then begin
+                                //voila! we found the blocker
+                                processName := tmpSysInfo^.ModuleName;
+                                //and we add it to the list
+                                AddProcessFilePair(processName,
+                                  tmpSysInfo^.ProcessID, filePath);
+                                break;
+                              end; //then - we found file's blocker
+                              tmpSysInfo := Pointer(Cardinal(tmpSysInfo)
+                                + tmpSysInfo^.NextOffset);
+                            end; //while
                             break;
-                          end; //then - we found file's blocker
-                          tmpSysInfo := Ptr(Cardinal(tmpSysInfo)
-                            + tmpSysInfo^.NextOffset);
-                        end; //while
+                          end; //then - found match
+                        end; //loop - j - find device
                       end; //then - file path is not empty
-                      //filePath := filePath + 'ololo';
                     finally
                       CloseHandle(fileHandle);
                     end; //finally - closing file handle
@@ -278,13 +310,15 @@ begin
             end; //then - callback call
           end; //for-loop
         finally
-          FreeMem(handleInformation);
+          FreeMem(handleInformation, sizeof(SYSTEM_HANDLE_INFORMATION_EX));
         end; //finally - free handle information memory
       end; //else - successfully got handle information
     finally
-      FreeMem(systemInformation);
+      FreeMem(systemInformation, sizeof(SYSTEM_PROCESS_INFORMATION));
     end; //finally - free processes information memory
   end; //else - successfully got processes information
+  //Drives.Free;
+  //tmpDrives.Free;
   Result := fProcesses;
 end; //GetLockers
 

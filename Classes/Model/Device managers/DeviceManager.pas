@@ -154,6 +154,11 @@ var
   driveIndex: Cardinal; //current drive index
   diskIndexes: DiskSet; //set for disk indexes
 begin
+
+  {
+    TODO: do this linking as it is done in the USBDeviceManager
+  }
+
   //getting the first volume in the system
   handle := FindFirstVolumeA(PChar(@volName[0]), sizeof(volName));
   if handle = INVALID_HANDLE_VALUE
@@ -181,7 +186,8 @@ begin
   ++ plus use CM_Get_Child and CM_Get_Sibling
 
 
-The CM_Locate_DevNode function obtains a device instance handle to the device node that is associated with a specified device instance identifier, on the local machine.
+The CM_Locate_DevNode function obtains a device instance handle to the device
+ node that is associated with a specified device instance identifier, on the local machine.
 
 
 CMAPI CONFIGRET WINAPI
@@ -195,24 +201,39 @@ CMAPI CONFIGRET WINAPI
 
 Parameters
 pdnDevInst 
-A pointer to a device instance handle that CM_Locate_DevNode retrieves. The retrieved handle is bound to the local machine. 
-pDeviceID 
-A pointer to a NULL-terminated string representing a device instance identifier. If this value is NULL, or if it points to a zero-length string, the function retrieves a device instance handle to the device at the root of the device tree. 
-ulFlags 
-A variable of ULONG type that supplies one of the following flag values that apply if the caller supplies a device instance identifier:
-CM_LOCATE_DEVNODE_NORMAL 
-The function retrieves the device instance handle for the specified device only if the device is currently configured in the device tree. 
-CM_LOCATE_DEVNODE_PHANTOM 
-The function retrieves a device instance handle for the specified device if the device is currently configured in the device tree or the device is a nonpresent device that is not currently configured in the device tree. 
+A pointer to a device instance handle that CM_Locate_DevNode retrieves.
+The retrieved handle is bound to the local machine. 
 
-CM_LOCATE_DEVNODE_CANCELREMOVE 
-The function retrieves a device instance handle for the specified device if the device is currently configured in the device tree or in the process of being removed from the device tree. If the device is in the process of being removed, the function cancels the removal of the device.
+pDeviceID
+A pointer to a NULL-terminated string representing a device instance identifier.
+If this value is NULL, or if it points to a zero-length string, the function
+retrieves a device instance handle to the device at the root of the device tree.
 
-CM_LOCATE_DEVNODE_NOVALIDATION 
-Not used. 
+ulFlags
+A variable of ULONG type that supplies one of the following flag values that
+apply if the caller supplies a device instance identifier:
+
+CM_LOCATE_DEVNODE_NORMAL
+The function retrieves the device instance handle for the specified device only
+if the device is currently configured in the device tree.
+
+CM_LOCATE_DEVNODE_PHANTOM
+The function retrieves a device instance handle for the specified device if
+the device is currently configured in the device tree or the device is a
+nonpresent device that is not currently configured in the device tree.
+
+CM_LOCATE_DEVNODE_CANCELREMOVE
+The function retrieves a device instance handle for the specified device if the
+device is currently configured in the device tree or in the process
+of being removed from the device tree. If the device is in the process
+of being removed, the function cancels the removal of the device.
+
+CM_LOCATE_DEVNODE_NOVALIDATION
+Not used.
 
 Return Value
-If the operation succeeds, CM_Locate_DevNode returns CR_SUCCESS. Otherwise, the function returns one of the CR_Xxx error codes that are defined in cfgmgr32.h.
+If the operation succeeds, CM_Locate_DevNode returns CR_SUCCESS.
+Otherwise, the function returns one of the CR_Xxx error codes that are defined in cfgmgr32.h.
 
 
 }
