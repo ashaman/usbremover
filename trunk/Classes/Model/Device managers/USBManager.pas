@@ -41,7 +41,7 @@ implementation
 
 uses
   SysUtils, WMI, ShlObj, ShellObjExtended, WinIOCtl, DeviceException,
-  USBDevice, ProcessManager, Volume;
+  USBDevice, ProcessManager, Volume, MainForm {TODO: VERY BAD!!!};
 
 var
   Instance: TUSBManager;
@@ -177,7 +177,7 @@ begin
         fBroadcastEvent.Signal(nil);
       end //then - device was ejected
       else begin
-        TProcessManager.GetInstance.GetLockers(device.MountPoints, nil);
+        TProcessManager.GetInstance.GetLockers(device.MountPoints, mainFrm.PBCallback);
       end; //
     end //then - ejection succeeded
     else begin

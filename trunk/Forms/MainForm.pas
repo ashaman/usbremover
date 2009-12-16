@@ -17,6 +17,8 @@ type
     CoolTrayIcon1: TCoolTrayIcon;
     PopupMenu1: TPopupMenu;
     XJustOne1: TXJustOne;
+    ProgressBar1: TProgressBar;
+    Label2: TLabel;
     procedure ComboBox1Change(Sender: TObject);
     procedure FillDrives(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -26,7 +28,7 @@ type
     procedure PopupMenuClick(Sender: TObject);
     procedure AddInfo(Device: TDevice; Parent: TTreeNode);
   public
-    { Public declarations }
+    procedure PBCallback(Sender: TObject);
   end;
 
 var
@@ -41,6 +43,11 @@ var
   fullInfo: string;
 
 {$R *.dfm}
+
+procedure TMainFrm.PBCallback(Sender: TObject);
+begin
+  ProgressBar1.Position := Integer(Sender);
+end;
 
 procedure TMainFrm.AddInfo(Device: TDevice; Parent: TTreeNode);
 var
