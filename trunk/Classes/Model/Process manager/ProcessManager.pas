@@ -45,13 +45,14 @@ var
   s: string; //buffer string
 begin
   Result := TStringList.Create;
+  ZeroMemory(@buf[0], sizeof(buf));
   for i := 0 to Points.Count-1 do
   begin
     s := Points.Strings[i];
     Delete(s, Length(s), 1);
-    if QueryDosDevice(PChar(@s[1]), PChar(@buf[0]), sizeof(buf)) <> 0
+    if QueryDosDevice(@s[1], @buf[0], sizeof(buf)) <> 0
     then begin
-      Result.AddObject(Points.Strings[i],TObject(Trim(String(buf))));
+      Result.Add(Trim(buf));
     end; //then - device alias
   end; //loop
   //Points.Free;
@@ -91,7 +92,7 @@ begin
 end; //AddProcessFilePair
 
 //Thread routine. Called by the thread in TProcessManager.GetFileNameFromHandle
-function GetFileName(Parameters: Pointer): Cardinal; stdcall;
+function GetFileName(Parameters: Pointer): Cardinal; pascal;
 var
   fileNameInfo: FILE_NAME_INFORMATION; //file name info
   ioStatusBlock: IO_STATUS_BLOCK; //I/O status block
@@ -156,7 +157,7 @@ begin
     try
       //starting thread and waiting until it finishes its work or it's
       //out of time
-      case WaitForSingleObject(thread, 100) of
+      case WaitForSingleObject(thread, 50) of
         WAIT_OBJECT_0:
           begin
             GetExitCodeThread(thread, exitCode);
@@ -216,8 +217,15 @@ var
   tmpSysInfo: PSYSTEM_PROCESS_INFORMATION; //temporary pointer
   drivePos: integer; //position of drive string
   buf: string; //buffer string
+  bufFilePath: string; //file path buffer
   tmpDrives: TStringList;
 begin
+  //clearing old values
+  for i := 0 to fProcesses.Count-1 do
+  begin
+    TProcess(fProcesses.Items[i]).Destroy;
+  end; //for-loop
+  fProcesses.Clear;
   //getting file type on the current system
   fileType := GetHandleType;
   //getting system information about processes and threads
@@ -265,16 +273,16 @@ begin
                       then begin
                         for j := 0 to tmpDrives.Count-1 do
                         begin
-                          buf := String(tmpDrives.Objects[j]);
+                          buf := tmpDrives.Strings[j];
                           drivePos := Pos(buf, filePath);
                           if drivePos = 1
                           then begin
-                            Delete(filePath, drivePos, Length(buf)+1);
-                            filePath := tmpDrives.Strings[j]+filePath;
+                            bufFilePath := Copy(filePath, Length(buf)+2, Length(filePath)-Length(buf));
+                            //Delete(filePath, drivePos, Length(buf)+1);
+                            bufFilePath := Drives.Strings[j]+bufFilePath;
                             //we try to find its blocker
                             tmpSysInfo := systemInformation;
-                            while (tmpSysInfo^.NextOffset <> 0) do
-                            begin
+                            repeat
                               //if handles are matching...
                               if tmpSysInfo^.ProcessID =
                                 handleInformation^.Information[i].ProcessId
@@ -283,12 +291,12 @@ begin
                                 processName := tmpSysInfo^.ModuleName;
                                 //and we add it to the list
                                 AddProcessFilePair(processName,
-                                  tmpSysInfo^.ProcessID, filePath);
+                                  tmpSysInfo^.ProcessID, bufFilePath);
                                 break;
                               end; //then - we found file's blocker
-                              tmpSysInfo := Pointer(Cardinal(tmpSysInfo)
+                              tmpSysInfo := Ptr(Cardinal(tmpSysInfo)
                                 + tmpSysInfo^.NextOffset);
-                            end; //while
+                            until tmpSysInfo^.NextOffset = 0; //end repeat-loop
                             break;
                           end; //then - found match
                         end; //loop - j - find device
@@ -318,7 +326,7 @@ begin
     end; //finally - free processes information memory
   end; //else - successfully got processes information
   //Drives.Free;
-  //tmpDrives.Free;
+  tmpDrives.Free;
   Result := fProcesses;
 end; //GetLockers
 
