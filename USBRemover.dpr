@@ -32,7 +32,8 @@ uses
   BroadcastEvent in 'Classes\Controller\BroadcastEvent.pas',
   ProcessManager in 'Classes\Model\Process manager\ProcessManager.pas',
   NTDLL in 'Classes\Model\API\NTdll.pas',
-  Process in 'Classes\Model\Process\Process.pas';
+  Process in 'Classes\Model\Process\Process.pas',
+  MainFormController in 'Classes\Controller\MainFormController.pas';
 
 {$R *.res}
 begin
