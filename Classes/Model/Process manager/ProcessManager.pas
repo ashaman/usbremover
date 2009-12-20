@@ -157,7 +157,7 @@ begin
     try
       //starting thread and waiting until it finishes its work or it's
       //out of time
-      case WaitForSingleObject(thread, 50) of
+      case WaitForSingleObject(thread, 200) of
         WAIT_OBJECT_0:
           begin
             GetExitCodeThread(thread, exitCode);

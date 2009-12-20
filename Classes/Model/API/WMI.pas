@@ -154,7 +154,8 @@ type
 }
 
 const
-  CR_SUCCESS = 0;
+  CR_SUCCESS = $00000000;
+  CR_FAILURE = $00000013;
 
   PNP_VetoTypeUnknown          = 0;
   PNP_VetoLegacyDevice         = 1;

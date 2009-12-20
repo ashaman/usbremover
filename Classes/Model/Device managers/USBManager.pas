@@ -41,7 +41,7 @@ implementation
 
 uses
   SysUtils, WMI, ShlObj, ShellObjExtended, WinIOCtl, DeviceException,
-  USBDevice, ProcessManager, Volume, MainForm {TODO: VERY BAD!!!};
+  USBDevice, ProcessManager, Volume;
 
 var
   Instance: TUSBManager;
@@ -160,12 +160,15 @@ end; //RemoveDrive
 procedure TUSBManager.RemoveDrive(device: TDevice);
 var
   vetoName: TCharArray; //the reason of the fail of ejection
+  errorCode: Cardinal; //error code
 begin
   ZeroMemory(@vetoName[0],sizeof(vetoName));
   try
+    {WORKS UNSTABLE!!!}
+    errorCode := CM_Request_Device_EjectA(device.InstanceHandle, nil,
+      PWideChar(@vetoName[0]), sizeof(vetoName), 0);
     //trying to eject the device
-    if CM_Request_Device_EjectA(device.InstanceHandle, nil, PWideChar(@vetoName[0]),
-      sizeof(vetoName), 0) = CR_SUCCESS
+    if errorCode = CR_SUCCESS
     then begin
       if vetoName = ''
       then begin
@@ -173,15 +176,22 @@ begin
         //notifying all the windows
         device.NotifySystem;
         fDevices.Remove(device);
+        //notifying listenes
+        fRemovalSucceeded.Signal(device);
         device.Destroy;
         fBroadcastEvent.Signal(nil);
       end //then - device was ejected
       else begin
-        TProcessManager.GetInstance.GetLockers(device.MountPoints, mainFrm.PBCallback);
+        fRemovalFailed.Signal(device);
       end; //
     end //then - ejection succeeded
     else begin
-      raise EDeviceException.Create(SysErrorMessage(GetLastError));
+      if errorCode = CR_FAILURE
+      then begin
+      end //cannot handle too many requests - CR_FAILURE
+      else begin
+        raise EDeviceException.Create(SysErrorMessage(GetLastError));
+      end; //other reasons
     end; //else - ejection failed
   finally
   end;
