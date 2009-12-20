@@ -84,7 +84,7 @@ implementation
 uses
   Windows, DeviceException, SysUtils;
 
-//This function implements abstract member of TDevice class
+//This function gets all mount points connected with this device
 function TDevice.GetMountPoints: TStringList;
 var
   i: integer; //loop index

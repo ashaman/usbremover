@@ -17,7 +17,6 @@ program USBRemover;
 
 uses
   Forms,
-  MainForm in 'Forms\MainForm.pas' {MainFrm - Main application window},
   USBManager in 'Classes\Model\Device managers\USBManager.pas',
   DeviceManager in 'Classes\Model\Device managers\DeviceManager.pas',
   WinIOCtl in 'Classes\Model\API\WinIOCtl.pas',
@@ -33,11 +32,16 @@ uses
   ProcessManager in 'Classes\Model\Process manager\ProcessManager.pas',
   NTDLL in 'Classes\Model\API\NTdll.pas',
   Process in 'Classes\Model\Process\Process.pas',
-  MainFormController in 'Classes\Controller\MainFormController.pas';
+  MainFormController in 'Classes\Controller\MainFormController.pas',
+  Main in 'Forms\Main.pas' {MainAppForm - main application form},
+  Stopped in 'Forms\Stopped.pas' {ProcessesForm};
 
 {$R *.res}
 begin
   Application.Initialize;
-  Application.CreateForm(TMainFrm, MainFrm);
+  Application.ShowMainForm := false;
+  Application.Title := 'USBRemover';
+  Application.CreateForm(TMainAppForm, MainAppForm);
+  Application.CreateForm(TProcessesForm, ProcessesForm);
   Application.Run;
 end.

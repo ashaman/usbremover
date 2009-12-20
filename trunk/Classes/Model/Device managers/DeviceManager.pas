@@ -30,6 +30,8 @@ type
     fBroadcastEvent: TBroadcastNotifyEvent;
     fDevices: TList;
     fLogicalDrives: TStringList;
+    fRemovalFailed: TBroadcastNotifyEvent;
+    fRemovalSucceeded: TBroadcastNotifyEvent;
     fWindowPointer: Pointer;
     constructor Create;
     function BuildAll(Devices: TList): TList; virtual; abstract;
@@ -48,6 +50,8 @@ type
     function GetDeviceInfo(name: PChar): TDevice; overload; virtual;
     function GetDeviceCount: integer; virtual;
     property NotifyEvent: TBroadcastNotifyEvent read fBroadcastEvent;
+    property RemovalFailed: TBroadcastNotifyEvent read fRemovalFailed;
+    property RemovalSucceeded: TBroadcastNotifyEvent read fRemovalSucceeded;
   end;
 
 {==============================================================================}
@@ -312,8 +316,38 @@ end; //WndProc
 {CONSTRUCTOR}
 constructor TDeviceManager.Create;
 begin
+
+  {TODO:
+
+    Adjusting privileges:
+
+    SeUndockPrivilege
+    SeLoadDriverPrivilege
+
+  }
+
+  {
+  SE_ASSIGNPRIMARYTOKEN_NAME
+SeAssignPrimaryTokenPrivilege
+ Replace a process-level token 
+SE_BACKUP_NAME
+SeBackupPrivilege
+ Back up files and directories
+SE_DEBUG_NAME
+SeDebugPrivilege
+ Debug programs
+SE_INCREASE_QUOTA_NAME
+SeIncreaseQuotaPrivilege
+ Adjust memory quotas for a process
+SE_TCB_NAME
+SeTcbPrivilege
+ Act as part of the operating system
+  }
+
   inherited Create;
   fBroadcastEvent := TBroadcastNotifyEvent.Create;
+  fRemovalFailed := TBroadcastNotifyEvent.Create;
+  fRemovalSucceeded := TBroadcastNotifyEvent.Create;
   FillDevices;
   RegisterNotification;
 end;
