@@ -23,16 +23,17 @@ type
   private
     function FilterVolumes(drivePath: PChar): boolean;
     function LinkDevices(var Volumes: TList; var Drives: TList): TList;
+    procedure ClearDevices(var fDevices: TList);
     procedure GetVolumesAndDrives(var Volumes: TList; var Drives: TList);
     procedure RegisterNotification;
     procedure WndProc(var Msg: TMessage); message WM_DEVICECHANGE;
   protected
-    fBroadcastEvent: TBroadcastNotifyEvent;
     fDevices: TList;
     fLogicalDrives: TStringList;
-    fRemovalFailed: TBroadcastNotifyEvent;
-    fRemovalSucceeded: TBroadcastNotifyEvent;
     fWindowPointer: Pointer;
+    fRemovalSucceeded: TBroadcastNotifyEvent;
+    fRemovalFailed: TBroadcastNotifyEvent;
+    fConfigurationChanged: TBroadcastNotifyEvent;
     constructor Create;
     function BuildAll(Devices: TList): TList; virtual; abstract;
     procedure FillDevices;
@@ -41,17 +42,17 @@ type
   public
     destructor Destroy; override;
     //These functions depend on device type
+    procedure Refresh;
     procedure RemoveDrive(index: integer); overload; virtual; abstract;
     procedure RemoveDrive(device: TDevice); overload; virtual; abstract;
     procedure ForcedRemoveDrive(index: integer); virtual; abstract;
     //These funtions are common for all devices
-    function GetBlockedFiles: TStrings;
     function GetDeviceInfo(index: integer): TDevice; overload; virtual;
     function GetDeviceInfo(name: PChar): TDevice; overload; virtual;
     function GetDeviceCount: integer; virtual;
-    property NotifyEvent: TBroadcastNotifyEvent read fBroadcastEvent;
+    property RemovalSucceeded: TBroadcastNotifyEvent read  fRemovalSucceeded;
     property RemovalFailed: TBroadcastNotifyEvent read fRemovalFailed;
-    property RemovalSucceeded: TBroadcastNotifyEvent read fRemovalSucceeded;
+    property ConfigurationChanged: TBroadcastNotifyEvent read fConfigurationChanged;
   end;
 
 {==============================================================================}
@@ -59,6 +60,12 @@ implementation
 
 uses
   SysUtils, WMI, ShellObjExtended, Volume, StrUtils, Drive;
+
+//This procedure refreshes the device list
+procedure TDeviceManager.Refresh;
+begin
+  FillDevices;
+end; //Refresh
 
 //Filters only necessary devices which match the type criteria
 function TDeviceManager.FilterVolumes(drivePath: PChar): boolean;
@@ -264,26 +271,39 @@ Otherwise, the function returns one of the CR_Xxx error codes that are defined i
   end; //else - opened
 end; //GetVolumesAndDrives
 
+//This procedure clears all the previous device information
+procedure TDeviceManager.ClearDevices(var fDevices: TList);
+var
+  i: integer;
+begin
+  //checking if the devices are assigned
+  if Assigned(fDevices)
+  then begin
+    for i := 0 to fDevices.Count-1 do
+    begin
+      TDevice(fDevices.Items[i]).Destroy;
+    end; //for-loop
+    fDevices.Free;
+  end; //then - list is assigned
+end; //ClearDevices
+
 //This procedure fills the device list
 procedure TDeviceManager.FillDevices;
 var
   fVolumes, fDrives: TList; //temporary lists
 begin
+  ClearDevices(fDevices);
   fVolumes := TList.Create;
   fDrives := TList.Create;
-  if Assigned(fDevices)
-  then begin
-    fDevices.Clear;
-  end;
   GetVolumesAndDrives(fVolumes, fDrives);
   fDevices := BuildAll(LinkDevices(fVolumes, fDrives));
   if not Assigned(fDevices)
   then begin
     fDevices := TList.Create;
   end; //then - no devices were detected
-  fVolumes.Destroy;
-  fDrives.Destroy;
-  fBroadcastEvent.Signal(nil);
+  fVolumes.Free;
+  fDrives.Free;
+  fConfigurationChanged.Signal(self);
 end; //FillDevices
 
 //This function registers this class for handling Windows messages
@@ -316,67 +336,24 @@ end; //WndProc
 {CONSTRUCTOR}
 constructor TDeviceManager.Create;
 begin
-
-  {TODO:
-
-    Adjusting privileges:
-
-    SeUndockPrivilege
-    SeLoadDriverPrivilege
-
-  }
-
-  {
-  SE_ASSIGNPRIMARYTOKEN_NAME
-SeAssignPrimaryTokenPrivilege
- Replace a process-level token 
-SE_BACKUP_NAME
-SeBackupPrivilege
- Back up files and directories
-SE_DEBUG_NAME
-SeDebugPrivilege
- Debug programs
-SE_INCREASE_QUOTA_NAME
-SeIncreaseQuotaPrivilege
- Adjust memory quotas for a process
-SE_TCB_NAME
-SeTcbPrivilege
- Act as part of the operating system
-  }
-
   inherited Create;
-  fBroadcastEvent := TBroadcastNotifyEvent.Create;
-  fRemovalFailed := TBroadcastNotifyEvent.Create;
   fRemovalSucceeded := TBroadcastNotifyEvent.Create;
+  fRemovalFailed := TBroadcastNotifyEvent.Create;
+  fConfigurationChanged := TBroadcastNotifyEvent.Create;
   FillDevices;
   RegisterNotification;
 end;
 
 {DESTRUCTOR}
 destructor TDeviceManager.Destroy;
-var
-  i: integer;
 begin
-  if Assigned(fBroadcastEvent)
-  then begin
-    fBroadcastEvent.Destroy;
-  end;
   UnregisterDeviceNotification(fWindowPointer);
-  if Assigned(fDevices)
-  then begin
-    for i := 0 to fDevices.Count-1 do
-    begin
-      TDevice(fDevices.Items[i]).Destroy;
-    end;
-    fDevices.Free;
-  end;
+  ClearDevices(fDevices);
+  fRemovalSucceeded.Free;
+  fRemovalFailed.Free;
+  fConfigurationChanged.Free;
   inherited Destroy;
 end; //Destroy
-
-function TDeviceManager.GetBlockedFiles: TStrings;
-begin
-  Result := nil;
-end;
 
 function TDeviceManager.GetDeviceCount: integer;
 begin

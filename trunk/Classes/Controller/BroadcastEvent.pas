@@ -36,7 +36,6 @@ type
     procedure SignalObserver(Observer: TMethod); override;
   public
     procedure Attach(Observer: TNotifyEvent);
-    procedure AttachWithNotification(Observer: TNotifyEvent); //added by J.L.B.
     procedure Detach(Observer: TNotifyEvent);
 
     procedure Signal(Sender: TObject);
@@ -163,14 +162,8 @@ end;
 procedure TBroadcastNotifyEvent.Attach(Observer: TNotifyEvent);
 begin
   inherited Attach(TMethod(Observer));
+  //Observer(nil); //fixed by J.L. Blackrow
 end;
-
-procedure TBroadcastNotifyEvent.AttachWithNotification(Observer: TNotifyEvent);
-begin
-  inherited Attach(TMethod(Observer));
-  Observer(nil); //fixed by J.L. Blackrow
-end;
-
 
 procedure TBroadcastNotifyEvent.Detach(Observer: TNotifyEvent);
 begin

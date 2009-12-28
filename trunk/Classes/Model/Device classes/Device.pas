@@ -84,7 +84,7 @@ implementation
 uses
   Windows, DeviceException, SysUtils;
 
-//This function gets all mount points connected with this device
+//This function implements abstract member of TDevice class
 function TDevice.GetMountPoints: TStringList;
 var
   i: integer; //loop index
@@ -92,7 +92,7 @@ begin
   Result := TStringList.Create;
   for i := 0 to fChildren.Count-1 do
   begin
-    Result.AddStrings(TDevice(fChildren.Items[i]).GetMountPoints);
+    Result.AddStrings(TDevice(fChildren.Items[i]).MountPoints);
   end;
 end; //GetMountPoints
 

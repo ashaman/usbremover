@@ -1,122 +1,99 @@
+{
+  UI PART.
+  DO NOT MODIFY.
+  WRITTEN BY J.L.Blackrow
+}
 unit Stopped;
 
 interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, ComCtrls, ExtCtrls, StdCtrls, Device;
+  Dialogs, ComCtrls, ExtCtrls, StdCtrls;
 
 type
-  TProcessesForm = class(TForm)
-    Panel1: TPanel;
-    treeViewProcesses: TTreeView;
-    Panel2: TPanel;
-    btnRescan: TButton;
-    Label1: TLabel;
-    btnCancel: TButton;
-    searchProgressBar: TProgressBar;
-    Label2: TLabel;
-    procedure btnTryAgainClick(Sender: TObject);
+  TStoppedForm = class(TForm)
+    LabelPanel: TPanel;
+    TreeViewProcesses: TTreeView;
+    ButtonPanel: TPanel;
+    ButtonRetry: TButton;
+    ButtonForced: TButton;
+    ButtonStopProcess: TButton;
+    LabelInformation: TLabel;
+    ButtonCancel: TButton;
+    ProgressBar: TProgressBar;
+    LabelProgress: TLabel;
+    procedure ButtonCancelClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure FormActivate(Sender: TObject);
-    procedure btnCancelClick(Sender: TObject);
-    procedure btnRescanClick(Sender: TObject);
-    procedure FormShow(Sender: TObject);
-    procedure FormHide(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure TreeViewProcessesClick(Sender: TObject);
+    procedure ButtonRetryClick(Sender: TObject);
+    procedure ButtonForcedClick(Sender: TObject);
   private
-    fBlockedDevice: TDevice;
-    function GetProgressCallback: TNotifyEvent;
-    procedure RemovalSucceeded(Sender: TObject);
-    procedure ReportProgress(Sender: TObject);
-    procedure Refresh(Sender: TObject);
+    { Private declarations }
   public
-    property BlockedDevice: TDevice read fBlockedDevice write fBlockedDevice;
-    property ProgressCallback: TNotifyEvent read GetProgressCallback;
+    { Public declarations }
   end;
 
 var
-  ProcessesForm: TProcessesForm;
+  StoppedForm: TStoppedForm;
 
 implementation
 
-uses
-  USBManager, Process, ProcessManager;
-
 {$R *.dfm}
 
-{IMPLEMENTED}
+uses
+  StoppedFormController;
 
-procedure TProcessesForm.Refresh(Sender: TObject);
 var
-  lockers: TList; //blockers
-  i,j: integer; //loop indexes
-  process: TProcess; //temp
-  treeNode: TTreeNode; //temp
-begin
-  treeViewProcesses.Items.Clear;
-  lockers := TProcessManager.GetInstance.GetLockers(fBlockedDevice.MountPoints,
-    self.ProgressCallback);
-  for i := 0 to lockers.Count-1 do
-  begin
-    process := TProcess(lockers.Items[i]);
-    treeNode := treeViewProcesses.Items.AddChildFirst(nil, process.Name);
-    for j := 0 to process.OpenedFiles.Count-1 do
-    begin
-      treeViewProcesses.Items.AddChild(treeNode, process.OpenedFiles.Strings[i]);
-    end; //loop-j
-  end; //loop-i
-end;
+  controller: TStoppedFormController;
 
-procedure TProcessesForm.ReportProgress(Sender: TObject);
-begin
-  searchProgressBar.Position := Integer(Sender);
-end;
-
-function TProcessesForm.GetProgressCallback: TNotifyEvent;
-begin
-  Result := self.ReportProgress;
-end;
-
-procedure TProcessesForm.RemovalSucceeded(Sender: TObject);
-begin
-  self.Hide;
-end;
-
-{IMPLEMENTED}
-
-procedure TProcessesForm.btnTryAgainClick(Sender: TObject);
-begin
-  TUSBManager.GetManager.RemoveDrive(fBlockedDevice);
-end;
-
-procedure TProcessesForm.FormCreate(Sender: TObject);
-begin
-  TUSBManager.GetManager.RemovalSucceeded.Attach(self.RemovalSucceeded);
-end;
-
-procedure TProcessesForm.FormActivate(Sender: TObject);
-begin
-  Refresh(Sender);
-end;
-
-procedure TProcessesForm.btnCancelClick(Sender: TObject);
+//Closes the form
+procedure TStoppedForm.ButtonCancelClick(Sender: TObject);
 begin
   Close;
-end;
+end; //ButtonCancelClick
 
-procedure TProcessesForm.btnRescanClick(Sender: TObject);
+//Attaches the controller
+procedure TStoppedForm.FormCreate(Sender: TObject);
 begin
-  FormActivate(nil);
-end;
+  controller := TStoppedFormController.Create(self);
+end; //FormCreate
 
-procedure TProcessesForm.FormShow(Sender: TObject);
+//Executes the operations when form is closed:
+//shows the previous form
+procedure TStoppedForm.FormClose(Sender: TObject;
+  var Action: TCloseAction);
 begin
-  TUSBManager.GetManager.RemovalFailed.Attach(self.Refresh);
-end;
+  controller.Close;
+end; //FormClose
 
-procedure TProcessesForm.FormHide(Sender: TObject);
+//Handles clicks on the TreeView
+procedure TStoppedForm.TreeViewProcessesClick(Sender: TObject);
 begin
-  TUSBManager.GetManager.RemovalFailed.Detach(self.Refresh);
-end;
+  //checking if there are any available elements
+  if Assigned(TreeViewProcesses.Selected)
+  then begin
+    //checking if it is a root element
+    if not Assigned(TreeViewProcesses.Selected.Parent)
+    then begin
+      ButtonStopProcess.Enabled := true;
+      Exit;
+    end; //then - root element chosen
+  end;  //then - some elements present
+  ButtonStopProcess.Enabled := false;
+end; //TreeViewProcessesClick
+
+//Tries to remove the device again
+procedure TStoppedForm.ButtonRetryClick(Sender: TObject);
+begin
+  controller.TryEject;
+end; //ButtonRetryClick
+
+//Makes a forced removal of the device
+procedure TStoppedForm.ButtonForcedClick(Sender: TObject);
+begin
+  controller.ForcedRemoval;
+end; //ButtonForcedClick
 
 end.
