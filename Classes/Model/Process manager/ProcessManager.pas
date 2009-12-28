@@ -24,6 +24,7 @@ type
     constructor Create;
   public
     function GetLockers(Drives: TStringList; ProgressCallback: TNotifyEvent): TList;
+    procedure KillProcess(PID: Cardinal);
     class function GetInstance: TProcessManager;
     property BlockerProcesses: TList read fProcesses;
   end;
@@ -36,6 +37,23 @@ uses
 
 var
   instance: TProcessManager; //singleton variable
+
+//Kills process by its ID
+procedure TProcessManager.KillProcess(PID: Cardinal);
+var
+  handle: THandle; //process handle
+begin
+  handle := OpenProcess(PROCESS_TERMINATE, true, PID);
+  if handle = 0
+  then begin
+    raise Exception.Create('Failed to open process');
+  end
+  else begin
+    if not TerminateProcess(handle, 0)
+    then begin
+    end; //cannot terminate process - no prvileges specified...
+  end; //process opened
+end; //KillProcess
 
 //This procedure associates drive mount points and physical drives
 function TProcessManager.AssociateMountPointsAndDrives(Points: TStringList): TStringList;
@@ -92,7 +110,7 @@ begin
 end; //AddProcessFilePair
 
 //Thread routine. Called by the thread in TProcessManager.GetFileNameFromHandle
-function GetFileName(Parameters: Pointer): Cardinal; pascal;
+function GetFileName(Parameters: Pointer): Cardinal; stdcall;
 var
   fileNameInfo: FILE_NAME_INFORMATION; //file name info
   ioStatusBlock: IO_STATUS_BLOCK; //I/O status block
@@ -130,7 +148,7 @@ begin
   end; //then - successfully got info about the file handle
   //returning parameters
   PGetFileNameThreadParam(Parameters)^ := threadParameters;
-  ExitThread(Result);
+  EndThread(Result);
 end; //GetFileName
 
 //This function gets file name from the handle
@@ -157,7 +175,7 @@ begin
     try
       //starting thread and waiting until it finishes its work or it's
       //out of time
-      case WaitForSingleObject(thread, 200) of
+      case WaitForSingleObject(thread, 50) of
         WAIT_OBJECT_0:
           begin
             GetExitCodeThread(thread, exitCode);
@@ -168,7 +186,7 @@ begin
           end; //WAIT
         WAIT_TIMEOUT:
           begin
-            TerminateThread(handle, 0);
+            TerminateThread(thread, 0);
           end; //TIMEOUT
       end; //case
     finally
@@ -225,7 +243,8 @@ begin
   begin
     TProcess(fProcesses.Items[i]).Destroy;
   end; //for-loop
-  fProcesses.Clear;
+  fProcesses.Free;
+  fProcesses := TList.Create;
   //getting file type on the current system
   fileType := GetHandleType;
   //getting system information about processes and threads
@@ -283,6 +302,8 @@ begin
                             //we try to find its blocker
                             tmpSysInfo := systemInformation;
                             repeat
+                              tmpSysInfo := Ptr(Cardinal(tmpSysInfo)
+                                + tmpSysInfo^.NextOffset);
                               //if handles are matching...
                               if tmpSysInfo^.ProcessID =
                                 handleInformation^.Information[i].ProcessId
@@ -294,8 +315,6 @@ begin
                                   tmpSysInfo^.ProcessID, bufFilePath);
                                 break;
                               end; //then - we found file's blocker
-                              tmpSysInfo := Ptr(Cardinal(tmpSysInfo)
-                                + tmpSysInfo^.NextOffset);
                             until tmpSysInfo^.NextOffset = 0; //end repeat-loop
                             break;
                           end; //then - found match
@@ -325,7 +344,7 @@ begin
       FreeMem(systemInformation, sizeof(SYSTEM_PROCESS_INFORMATION));
     end; //finally - free processes information memory
   end; //else - successfully got processes information
-  //Drives.Free;
+  Drives.Free;
   tmpDrives.Free;
   Result := fProcesses;
 end; //GetLockers

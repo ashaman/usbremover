@@ -1,223 +1,199 @@
+{
+  UI PART.
+  DO NOT MODIFY.
+  MADE BY J.L.Blackrow.
+}
 unit Main;
 
 interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, CoolTrayIcon, Menus, ComCtrls, ToolWin, ImgList, Device;
+  Dialogs, CoolTrayIcon, Menus, ComCtrls, ToolWin, ImgList;
 
 type
-  TMainAppForm = class(TForm)
-    trayIcon: TCoolTrayIcon;
-    trayRightContextMenu: TPopupMenu;
-    ShowMainWindow: TMenuItem;
-    ViewSettings: TMenuItem;
-    AboutApp: TMenuItem;
-    ExitApp: TMenuItem;
-    mainMenu: TMainMenu;
+  TMainForm = class(TForm)
+    MainPopupMenu: TPopupMenu;
+    Show1: TMenuItem;
+    Hide1: TMenuItem;
+    About: TMenuItem;
+    Exit1: TMenuItem;
+    MainMenu: TMainMenu;
     Command1: TMenuItem;
     View1: TMenuItem;
     Help1: TMenuItem;
-    Index: TMenuItem;
-    About: TMenuItem;
-    Refresh: TMenuItem;
-    Settings: TMenuItem;
-    Showtoolbar: TMenuItem;
-    Stop: TMenuItem;
-    Properties: TMenuItem;
-    Exit: TMenuItem;
-    mainToolbar: TToolBar;
-    deviceTreeView: TTreeView;
-    StartConsole: TMenuItem;
-    trayLeftContextMenu: TPopupMenu;
+    Index1: TMenuItem;
+    About1: TMenuItem;
+    Refresh1: TMenuItem;
+    Settings1: TMenuItem;
+    Showtoolbar1: TMenuItem;
+    Stop1: TMenuItem;
+    Properties1: TMenuItem;
+    Exit3: TMenuItem;
+    ToolBarMain: TToolBar;
+    TreeViewDevices: TTreeView;
+    StartConsole1: TMenuItem;
+    PopupMenuDevices: TPopupMenu;
     ImageList: TImageList;
-    tbStop: TToolButton;
-    tbProperties: TToolButton;
-    tbSettings: TToolButton;
-    tbConsole: TToolButton;
-    procedure trayIconClick(Sender: TObject);
-    procedure ShowtoolbarClick(Sender: TObject);
-    procedure ExitClick(Sender: TObject);
-    procedure ShowMainWindowClick(Sender: TObject);
+    ToolButtonStop: TToolButton;
+    ToolButtonProperties: TToolButton;
+    ToolButtonSettings: TToolButton;
+    ToolButtonConsole: TToolButton;
+    ToolButtonRefresh: TToolButton;
+    CoolTrayIcon: TCoolTrayIcon;
+    TreePopupMenu: TPopupMenu;
+    Stop2: TMenuItem;
+    Properties2: TMenuItem;
+    procedure Show1Click(Sender: TObject);
+    procedure Exit1Click(Sender: TObject);
+    procedure Showtoolbar1Click(Sender: TObject);
+    procedure ToolButtonRefreshClick(Sender: TObject);
+    procedure CoolTrayIconMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure ToolButtonSettingsClick(Sender: TObject);
+    procedure ToolButtonStopClick(Sender: TObject);
+    procedure ToolButtonPropertiesClick(Sender: TObject);
+    procedure ToolButtonConsoleClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure tbStopClick(Sender: TObject);
+    procedure DevicesMenuItemClick(Sender: TObject);
+    procedure TreeViewDevicesClick(Sender: TObject);
+    procedure FormHide(Sender: TObject);
   private
-    procedure AddTreeItems(Device: TDevice; Parent: TTreeNode);
-    procedure ClearAll;
-    procedure DrivesPopupMenuItemClick(Sender: TObject);
-    procedure GetMenuItem(Device: TDevice; var Info: String);
-    procedure RefreshInfo(Sender: TObject);
-    procedure RemovalFailed(Sender: TObject);
-    procedure RemovalSucceded(Sender: TObject);
   public
     { Public declarations }
   end;
 
 var
-  MainAppForm: TMainAppForm;
+  MainForm: TMainForm;
 
 implementation
 
 {$R *.dfm}
 
 uses
-  USBManager, ProcessManager,
-  Drive, Volume,
-  Stopped;
+  USBManager, MainFormController;
 
-{IMPLEMENTED METHODS}
-
-procedure TMainAppForm.RemovalSucceded(Sender: TObject);
 var
-  deviceInfo: string;
-begin
-  GetMenuItem(Sender as TDevice, deviceInfo);
-  trayIcon.ShowBalloonHint('Removal succeeded!', deviceInfo, bitInfo, 10);
-end;
+  controller: TMainFormController;
 
-procedure TMainAppForm.RemovalFailed(Sender: TObject);
+//This procedure handles context menu clicks
+procedure TMainForm.DevicesMenuItemClick(Sender: TObject);
 var
-  deviceInfo: string;
+  index: integer; //needed drive index
 begin
-  GetMenuItem(Sender as TDevice, deviceInfo);
-  trayIcon.ShowBalloonHint('Removal failed!', deviceInfo, bitError, 10);
-  if not ProcessesForm.Showing
+  index := PopupMenuDevices.Items.IndexOf(Sender as TMenuItem);
+  controller.RemoveDrive(index);
+end; //DevicesMenuItemClick
+
+//Shows/Hides main form
+procedure TMainForm.Show1Click(Sender: TObject);
+begin
+  if not MainForm.Showing //form is hidden
   then begin
-    TUSBManager.GetManager.RemovalFailed.Detach(Self.RemovalFailed);
-    trayIcon.Enabled := false;
-    ProcessesForm.BlockedDevice := Sender as TDevice;
-    ProcessesForm.ShowModal;
-    trayIcon.Enabled := true;
-    TUSBManager.GetManager.RemovalFailed.Attach(Self.RemovalFailed);
-  end;
-end;
-
-//Click handler for the popup menu
-procedure TMainAppForm.DrivesPopupMenuItemClick(Sender: TObject);
-var
-  index: integer; //needed index
-begin
-  index := self.trayLeftContextMenu.Items.IndexOf(Sender as TMenuItem);
-  TUSBManager.GetManager.RemoveDrive(index);
-end;
-
-procedure TMainAppForm.ClearAll;
-begin
-  self.trayLeftContextMenu.Items.Clear;
-  self.deviceTreeView.Items.Clear;
-end;
-
-procedure TMainAppForm.RefreshInfo(Sender: TObject);
-var
-  manager: TUSBManager; //manager
-  i: integer; //loop index
-  itemName: string; //name of the new menu item
-  menuItem: TMenuItem; //new menu item;
-  device: TDevice; //device
-begin
-  ClearAll;
-  manager := TUSBManager.GetManager;
-  for i := 0 to manager.GetDeviceCount-1 do
-  begin
-    device := manager.GetDeviceInfo(i);
-    AddTreeItems(device, nil);
-    itemName := 'Remove ';
-    GetMenuItem(device, itemName);
-    //inserting new popup menu item
-    menuItem := TMenuItem.Create(nil);
-    menuItem.Caption := itemName;
-    menuItem.OnClick := self.DrivesPopupMenuItemClick;
-    trayLeftContextMenu.Items.Add(menuItem);
-  end; //loop
-end;
-
-procedure TMainAppForm.GetMenuItem(Device: TDevice; var Info: String);
-var
-  i: integer;
-begin
-  if Device is TDiskDrive
-  then begin
-    //getting volumes information
-    Info := Info + Device.FriendlyName + '; volumes: ';
-    for i := 0 to Device.Count-1 do
-    begin
-      Info := Info + Device.Children[i].MountPoints[0]+' ('+
-        Device.Children[i].FriendlyName+')';
-      if i <> Device.Count-1
-      then begin
-        Info := Info + ', ';
-      end; //check if this is the last one
-    end; //loop
-  end //then - device is disk, getting its info
+    CoolTrayIcon.ShowMainForm;
+    Show1.Caption := 'Hide main window';
+  end //then - tag is 0 - form is hidden
   else begin
-    for i := 0 to Device.Count-1 do
-    begin
-      GetMenuItem(Device.Children[i], Info);
-      if i <> Device.Count-1
-      then begin
-        Info := Info + ', ';
-      end; //check if this is the last one
-    end; //loop
-  end; //else
-end;
+    CoolTrayIcon.HideMainForm;
+    Show1.Caption := 'Show main window';
+  end; //else - tag is 1 - form is shown
+end; //Show1Click
 
-procedure TMainAppForm.AddTreeItems(Device: TDevice; Parent: TTreeNode);
-var
-  i: integer; //loop index
-  treeNode: TTreeNode; //new tree node
-  volumeString: String; //full name string
-begin
-  if Device is TVolume
-  then begin
-    volumeString := Device.MountPoints.Strings[0]+' ('+Device.FriendlyName+')';
-    deviceTreeView.Items.AddChild(Parent, volumeString);
-  end //device is a volume
-  else begin
-    volumeString := Device.Description + ' ' + Device.FriendlyName;
-    treeNode := deviceTreeView.Items.AddChild(Parent, volumeString);
-    for i := 0 to Device.Count-1 do
-    begin
-      AddTreeItems(Device.Children[i], treeNode);
-    end; //loop
-  end; //device has other type - we try to get its childrem
-end;
-
-{END IMPLEMENTED METHODS}
-
-procedure TMainAppForm.trayIconClick(Sender: TObject);
-begin
-  trayLeftContextMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y);
-end;
-
-procedure TMainAppForm.ShowtoolbarClick(Sender: TObject);
-begin
-  mainToolbar.Visible := not mainToolbar.Visible;
-  Showtoolbar.Checked := not Showtoolbar.Checked;
-end;
-
-procedure TMainAppForm.ExitClick(Sender: TObject);
+//Terminates application
+procedure TMainForm.Exit1Click(Sender: TObject);
 begin
   Close;
-end;
+end; //ExitClick
 
-procedure TMainAppForm.ShowMainWindowClick(Sender: TObject);
+//This procedure changes the toolbar visibility
+procedure TMainForm.Showtoolbar1Click(Sender: TObject);
 begin
-  self.Show;
-end;
+  Showtoolbar1.Checked := not Showtoolbar1.Checked;
+  ToolBarMain.Visible := Showtoolbar1.Checked;
+end; //Showtoolbar1Click
 
-procedure TMainAppForm.FormCreate(Sender: TObject);
+//Refreshes current list of devices
+procedure TMainForm.ToolButtonRefreshClick(Sender: TObject);
 begin
-  TUSBManager.GetManager.NotifyEvent.AttachWithNotification(self.RefreshInfo);
-  TUSBManager.GetManager.RemovalFailed.Attach(self.RemovalFailed);
-  TUSBManager.GetManager.RemovalSucceeded.Attach(self.RemovalSucceded);
-end;
+  controller.Refresh;
+end; //ToolButtonRefreshClick
 
-procedure TMainAppForm.tbStopClick(Sender: TObject);
+//This procedure changes the menus in the tray icon
+procedure TMainForm.CoolTrayIconMouseDown(Sender: TObject;
+  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
-  if not Assigned(deviceTreeView.Selected.Parent)
+  //ShowMessage(Sender.ClassName);
+  if Button = mbLeft
   then begin
-    TUSBManager.GetManager.RemoveDrive(deviceTreeView.Selected.Index);
-  end;
+    CoolTrayIcon.LeftPopup := true;
+    CoolTrayIcon.PopupMenu := PopupMenuDevices;
+  end //click by the left button
+  else if Button = mbRight
+  then begin
+    CoolTrayIcon.LeftPopup := false;
+    CoolTrayIcon.PopupMenu := MainPopupMenu;
+  end; //click by the rigth button
+end; //CoolTrayIconMouseDown
+
+procedure TMainForm.ToolButtonSettingsClick(Sender: TObject);
+begin
+  //NOT YET...
 end;
+
+//This procedure handles "Stop" clicks
+procedure TMainForm.ToolButtonStopClick(Sender: TObject);
+begin
+  controller.RemoveDrive(TreeViewDevices.Selected.Index);
+end; //StopClick
+
+procedure TMainForm.ToolButtonPropertiesClick(Sender: TObject);
+begin
+  //NOT YET...
+end;
+
+procedure TMainForm.ToolButtonConsoleClick(Sender: TObject);
+begin
+  //NOT YET...
+end;
+
+//When the form is created, this method is invoked
+procedure TMainForm.FormCreate(Sender: TObject);
+begin
+  controller := TMainFormController.Create(self);
+end; //FormCreate
+
+procedure TMainForm.TreeViewDevicesClick(Sender: TObject);
+begin
+  //checking if there are any available elements
+  if Assigned(TreeViewDevices.Selected)
+  then begin
+    Properties1.Enabled := true;
+    ToolButtonProperties.Enabled := true;
+    TreeViewDevices.PopupMenu := TreePopupMenu;
+    //checking if it is a root element
+    if not Assigned(TreeViewDevices.Selected.Parent)
+    then begin
+      Stop1.Enabled := true;
+      Stop2.Enabled := true;
+      ToolButtonStop.Enabled := true;
+      Exit;
+    end; //then - root element chosen
+  end  //then - some elements present
+  else begin
+    TreeViewDevices.PopupMenu := nil;
+    Properties1.Enabled := false;
+    ToolButtonProperties.Enabled := false;
+  end; //else - no elements
+  //else - not a root element chosen
+  Stop1.Enabled := false;
+  Stop2.Enabled := false;
+  ToolButtonStop.Enabled := false;
+end;
+
+//Changes the caption of menu item
+procedure TMainForm.FormHide(Sender: TObject);
+begin
+  Show1.Caption := 'Show main window';
+end; //FormHide
 
 end.

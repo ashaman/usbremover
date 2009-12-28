@@ -33,15 +33,17 @@ uses
   NTDLL in 'Classes\Model\API\NTdll.pas',
   Process in 'Classes\Model\Process\Process.pas',
   MainFormController in 'Classes\Controller\MainFormController.pas',
-  Main in 'Forms\Main.pas' {MainAppForm - main application form},
-  Stopped in 'Forms\Stopped.pas' {ProcessesForm};
+  Main in 'Forms\Main.pas' {MainForm},
+  StoppedFormController in 'Classes\Controller\StoppedFormController.pas',
+  Stopped in 'Forms\Stopped.pas' {StoppedForm},
+  Mediator in 'Classes\Controller\Mediator.pas';
 
 {$R *.res}
 begin
   Application.Initialize;
+  //hiding main window from the taskbar
   Application.ShowMainForm := false;
-  Application.Title := 'USBRemover';
-  Application.CreateForm(TMainAppForm, MainAppForm);
-  Application.CreateForm(TProcessesForm, ProcessesForm);
+  Application.CreateForm(TMainForm, MainForm);
+  Application.CreateForm(TStoppedForm, StoppedForm);
   Application.Run;
 end.

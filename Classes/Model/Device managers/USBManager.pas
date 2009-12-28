@@ -80,7 +80,7 @@ begin
   end;
 end;
 
-//This function completes the building oth the device tree
+//This function completes the building of the device tree
 function TUSBManager.BuildAll(Devices: TList): TList;
 var
   fUSBDevices: TStringList; //temporary array of USB devices
@@ -158,43 +158,41 @@ end; //RemoveDrive
 
 //This function removes the specified device
 procedure TUSBManager.RemoveDrive(device: TDevice);
+label
+  failure;
 var
   vetoName: TCharArray; //the reason of the fail of ejection
-  errorCode: Cardinal; //error code
 begin
   ZeroMemory(@vetoName[0],sizeof(vetoName));
   try
-    {WORKS UNSTABLE!!!}
-    errorCode := CM_Request_Device_EjectA(device.InstanceHandle, nil,
-      PWideChar(@vetoName[0]), sizeof(vetoName), 0);
     //trying to eject the device
-    if errorCode = CR_SUCCESS
+    failure:
+    if CM_Request_Device_EjectA(device.InstanceHandle, nil, PWideChar(@vetoName[0]),
+      sizeof(vetoName), 0) = CR_SUCCESS
     then begin
       if vetoName = ''
       then begin
         //device was successfully ejected
-        //notifying all the windows
+        //notifying all the windows and listeners
         device.NotifySystem;
         fDevices.Remove(device);
-        //notifying listenes
         fRemovalSucceeded.Signal(device);
         device.Destroy;
-        fBroadcastEvent.Signal(nil);
+        fConfigurationChanged.Signal(self);
+        {
+          !!! THAT'S WHY EVERYTHING FAILS !!!
+          Should be called in a separate thread
+        }
       end //then - device was ejected
       else begin
         fRemovalFailed.Signal(device);
-      end; //
-    end //then - ejection succeeded
+      end; //else - device was not ejected
+    end //then - ejection attempt succeeded
     else begin
-      if errorCode = CR_FAILURE
-      then begin
-      end //cannot handle too many requests - CR_FAILURE
-      else begin
-        raise EDeviceException.Create(SysErrorMessage(GetLastError));
-      end; //other reasons
+      raise EDeviceException.Create(SysErrorMessage(GetLastError));
     end; //else - ejection failed
   finally
-  end;
+  end; //finally
 end; //RemoveDrive
 
 //This method makes force drive removal

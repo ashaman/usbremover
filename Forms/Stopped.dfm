@@ -1,8 +1,9 @@
-object ProcessesForm: TProcessesForm
-  Left = 345
-  Top = 194
-  Width = 437
-  Height = 457
+object StoppedForm: TStoppedForm
+  Left = 289
+  Top = 144
+  Width = 347
+  Height = 381
+  BorderIcons = [biSystemMenu, biMinimize]
   Caption = 'Stop!'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -114,80 +115,97 @@ object ProcessesForm: TProcessesForm
     0000000000000000000000000000000000000000000000000000000000000000
     000000000000000000000000000000000000000000000000000000000000}
   OldCreateOrder = False
-  OnActivate = FormActivate
+  OnClose = FormClose
   OnCreate = FormCreate
-  OnHide = FormHide
-  OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
-  object Panel1: TPanel
+  object LabelPanel: TPanel
     Left = 0
     Top = 0
-    Width = 429
-    Height = 65
+    Width = 339
+    Height = 73
     Align = alTop
     TabOrder = 0
-    object Label1: TLabel
+    object LabelInformation: TLabel
       Left = 1
       Top = 1
-      Width = 427
-      Height = 26
-      Align = alTop
+      Width = 337
+      Height = 71
+      Align = alClient
       Caption = 
         'Cannot remove the drive because some processes blocked files on ' +
-        'it. Close the files and then, retry.'
+        'it. Close the processes and then, retry, or make a forced remove' +
+        '.'
       Constraints.MaxWidth = 458
       WordWrap = True
     end
-    object Label2: TLabel
-      Left = 1
-      Top = 32
-      Width = 41
+    object LabelProgress: TLabel
+      Left = 0
+      Top = 40
+      Width = 89
       Height = 13
-      Caption = 'Progress'
+      Caption = 'Operation progress'
     end
-    object searchProgressBar: TProgressBar
-      Left = 1
-      Top = 47
-      Width = 427
+    object ProgressBar: TProgressBar
+      Left = 0
+      Top = 56
+      Width = 337
       Height = 17
-      Align = alBottom
       TabOrder = 0
     end
   end
-  object treeViewProcesses: TTreeView
+  object TreeViewProcesses: TTreeView
     Left = 0
-    Top = 65
-    Width = 429
-    Height = 317
+    Top = 73
+    Width = 339
+    Height = 233
     Align = alClient
     Indent = 19
     TabOrder = 1
+    OnClick = TreeViewProcessesClick
   end
-  object Panel2: TPanel
+  object ButtonPanel: TPanel
     Left = 0
-    Top = 382
-    Width = 429
+    Top = 306
+    Width = 339
     Height = 41
     Align = alBottom
     TabOrder = 2
-    object btnRescan: TButton
-      Left = 8
+    object ButtonRetry: TButton
+      Left = 0
       Top = 8
       Width = 75
       Height = 25
-      Caption = 'Rescan'
+      Caption = 'Try again'
       TabOrder = 0
-      OnClick = btnRescanClick
+      OnClick = ButtonRetryClick
     end
-    object btnCancel: TButton
-      Left = 344
+    object ButtonForced: TButton
+      Left = 80
+      Top = 8
+      Width = 89
+      Height = 25
+      Caption = 'Forced removal'
+      TabOrder = 1
+      OnClick = ButtonForcedClick
+    end
+    object ButtonStopProcess: TButton
+      Left = 176
+      Top = 8
+      Width = 83
+      Height = 25
+      Caption = 'Stop process'
+      Enabled = False
+      TabOrder = 2
+    end
+    object ButtonCancel: TButton
+      Left = 264
       Top = 8
       Width = 75
       Height = 25
       Caption = 'Cancel'
-      TabOrder = 1
-      OnClick = btnCancelClick
+      TabOrder = 3
+      OnClick = ButtonCancelClick
     end
   end
 end
