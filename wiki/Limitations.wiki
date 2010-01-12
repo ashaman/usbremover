@@ -1,0 +1,14 @@
+#summary Limitations of the current version.
+#labels Phase-Requirements,Phase-Design,Phase-Implementation
+
+= Introduction =
+
+Current version of this program has some limitations due to its design.
+
+
+= Details =
+
+<p>During the re-reading of Uwe Sieber's perfect <a href ="http://www.codeproject.com/KB/system/RemoveDriveByLetter.aspx">article</a>, I have found a
+very important sentence which I unfortunately skipped last time. It says that on operation systems like Vista and later some SetupAPI's functions doesn't work in the same way as on XP. For example, _CM_Get_Parent_ called for a volume will no more return the disk associated with it - it will give us link to the volume manager. The solution is to link a volume and a
+disk with the _DeviceNumber_. It is made in my program, but I've a bug somewhere else in my _DeviceManager_ class because it fails under admin profile on Vista.
+</p>
