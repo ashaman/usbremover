@@ -34,3 +34,8 @@ YEAH!!! I detect device arrivals and removals!!! But there's one great problem..
 
 10:42 12.12.2009
 Some improvements were done in process manager
+
+20:44 27.05.2010
+20:44 27.05.2010
+20:44 27.05.2010
+20:44 27.05.2010
