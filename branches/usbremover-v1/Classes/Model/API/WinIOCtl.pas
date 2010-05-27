@@ -1,0 +1,298 @@
+{
+  Partial translation of WinIOCtl.h, Dbt.h, setupapi.h and other Win SDK headers
+}
+
+unit WinIOCtl;
+
+interface
+
+uses
+
+  Windows, SysUtils;
+//Structure align for unpacked structures
+{$ALIGN 8}
+
+const
+  DeviceMask = '%s:';
+  VolumeMask = '\\.\' + DeviceMask;
+  DrivePattern = '\\.\PhysicalDrive%d';
+  DEV_FLOPPY = '\Device\Floppy';
+  FLOPPY_DRIVE = '\\?\fdc#';
+
+type
+  TCharArray = array [0..MAX_PATH] of char;
+  PCharArray = ^TCharArray;
+
+{
+  STRUCTURES AND CONSTANTS FROM WINIOCTL.H
+  Partially translated by J.L.Blackrow (e-mail: DarthYarius_0990@mail.ru)
+  Partially translated by Alexander Bagel
+  Copyright : © Fangorn Wizards Lab 1998 - 2009.
+}
+
+const
+  {
+    From ntddk.h and wdm.h
+  }
+
+  FILE_DEVICE_DISK = $00000007;
+  FILE_DEVICE_MASS_STORAGE = $0000002d;
+  FILE_DEVICE_FILE_SYSTEM = $00000009;
+
+  METHOD_BUFFERED = 0;
+
+  IOCTL_DISK_BASE = FILE_DEVICE_DISK;
+  IOCTL_STORAGE_BASE = FILE_DEVICE_MASS_STORAGE;
+
+  //File access
+  FILE_ANY_ACCESS = 0;
+  FILE_SPECIAL_ACCESS = FILE_ANY_ACCESS;
+  FILE_READ_ACCESS = $0001; // file & pipe
+  FILE_WRITE_ACCESS = $0002; // file & pipe
+
+  //IOCTL FLAGS
+  IOCTL_DISK_GET_DRIVE_GEOMETRY  = (IOCTL_DISK_BASE shl 16) or ($0000 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_DISK_GET_PARTITION_INFO = (IOCTL_DISK_BASE shl 16) or ($0001 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_DISK_SET_PARTITION_INFO = (IOCTL_DISK_BASE shl 16) or ($0002 shl 2) or (METHOD_BUFFERED) or ((FILE_READ_ACCESS or FILE_WRITE_ACCESS) shl 14);
+  IOCTL_DISK_GET_DRIVE_LAYOUT = (IOCTL_DISK_BASE shl 16) or ($0003 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_DISK_SET_DRIVE_LAYOUT = (IOCTL_DISK_BASE shl 16) or ($0004 shl 2) or (METHOD_BUFFERED) or ((FILE_READ_ACCESS or FILE_WRITE_ACCESS) shl 14);
+  IOCTL_DISK_VERIFY = (IOCTL_DISK_BASE shl 16) or ($0005 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_DISK_FORMAT_TRACKS = (IOCTL_DISK_BASE shl 16) or ($0006 shl 2) or (METHOD_BUFFERED) or ((FILE_READ_ACCESS or FILE_WRITE_ACCESS) shl 14);
+  IOCTL_DISK_REASSIGN_BLOCKS = (IOCTL_DISK_BASE shl 16) or ($0007 shl 2) or (METHOD_BUFFERED) or ((FILE_READ_ACCESS or FILE_WRITE_ACCESS) shl 14);
+  IOCTL_DISK_PERFORMANCE = (IOCTL_DISK_BASE shl 16) or ($0008 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_DISK_IS_WRITABLE = (IOCTL_DISK_BASE shl 16) or ($0009 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_DISK_LOGGING = (IOCTL_DISK_BASE shl 16) or ($000a shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_DISK_FORMAT_TRACKS_EX = (IOCTL_DISK_BASE shl 16) or ($000b shl 2) or (METHOD_BUFFERED) or ((FILE_READ_ACCESS or FILE_WRITE_ACCESS) shl 14);
+  IOCTL_DISK_HISTOGRAM_STRUCTURE = (IOCTL_DISK_BASE shl 16) or ($000c shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_DISK_HISTOGRAM_DATA = (IOCTL_DISK_BASE shl 16) or ($000d shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_DISK_HISTOGRAM_RESET = (IOCTL_DISK_BASE shl 16) or ($000e shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_DISK_REQUEST_STRUCTURE = (IOCTL_DISK_BASE shl 16) or ($000f shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_DISK_REQUEST_DATA = (IOCTL_DISK_BASE shl 16) or ($0010 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_DISK_PERFORMANCE_OFF = (IOCTL_DISK_BASE shl 16) or ($0018 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_DISK_GET_LENGTH_INFO = (IOCTL_DISK_BASE shl 16) or ($0017 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+
+  //MASS STORAGE DEVICES FLAGS
+  IOCTL_STORAGE_CHECK_VERIFY = (IOCTL_STORAGE_BASE shl 16) or ($0200 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_STORAGE_CHECK_VERIFY2 = (IOCTL_STORAGE_BASE shl 16) or ($0200 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_STORAGE_MEDIA_REMOVAL = (IOCTL_STORAGE_BASE shl 16) or ($0201 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_STORAGE_EJECT_MEDIA = (IOCTL_STORAGE_BASE shl 16) or ($0202 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_STORAGE_LOAD_MEDIA = (IOCTL_STORAGE_BASE shl 16) or ($0203 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_STORAGE_LOAD_MEDIA2 = (IOCTL_STORAGE_BASE shl 16) or ($0203 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_STORAGE_RESERVE = (IOCTL_STORAGE_BASE shl 16) or ($0204 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_STORAGE_RELEASE = (IOCTL_STORAGE_BASE shl 16) or ($0205 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_STORAGE_FIND_NEW_DEVICES = (IOCTL_STORAGE_BASE shl 16) or ($0206 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_STORAGE_EJECTION_CONTROL = (IOCTL_STORAGE_BASE shl 16) or ($0250 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_STORAGE_MCN_CONTROL = (IOCTL_STORAGE_BASE shl 16) or ($0251 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_STORAGE_GET_MEDIA_TYPES = (IOCTL_STORAGE_BASE shl 16) or ($0300 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_STORAGE_GET_MEDIA_TYPES_EX = (IOCTL_STORAGE_BASE shl 16) or ($0301 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_STORAGE_GET_MEDIA_SERIAL_NUMBER = (IOCTL_STORAGE_BASE shl 16) or ($0304 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_STORAGE_GET_HOTPLUG_INFO = (IOCTL_STORAGE_BASE shl 16) or ($0305 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_STORAGE_SET_HOTPLUG_INFO = (IOCTL_STORAGE_BASE shl 16) or ($0306 shl 2) or (METHOD_BUFFERED) or ((FILE_READ_ACCESS or FILE_WRITE_ACCESS) shl 14);
+  IOCTL_STORAGE_RESET_BUS = (IOCTL_STORAGE_BASE shl 16) or ($0400 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_STORAGE_RESET_DEVICE = (IOCTL_STORAGE_BASE shl 16) or ($0401 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_STORAGE_BREAK_RESERVATION = (IOCTL_STORAGE_BASE shl 16) or ($0405 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_STORAGE_GET_DEVICE_NUMBER = (IOCTL_STORAGE_BASE shl 16) or ($0420 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_STORAGE_PREDICT_FAILURE = (IOCTL_STORAGE_BASE shl 16) or ($0440 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  IOCTL_STORAGE_READ_CAPACITY = (IOCTL_STORAGE_BASE shl 16) or ($0450 shl 2) or (METHOD_BUFFERED) or (FILE_READ_ACCESS shl 14);
+  IOCTL_STORAGE_QUERY_PROPERTY = ((IOCTL_STORAGE_BASE shl 16) or (FILE_ANY_ACCESS shl 14) or ($0500 shl 2) or METHOD_BUFFERED);
+
+type
+
+  DEVICE_TYPE = DWORD;
+  PStorageDeviceNumber = ^TStorageDeviceNumber;
+  TStorageDeviceNumber = packed record
+    DeviceType: DEVICE_TYPE;
+    DeviceNumber: DWORD;
+    PartitionNumber: DWORD;
+  end;
+
+
+    _MEDIA_TYPE = (
+    Unknown,                // Format is unknown
+    F5_1Pt2_512,            // 5.25", 1.2MB,  512 bytes/sector
+    F3_1Pt44_512,           // 3.5",  1.44MB, 512 bytes/sector
+    F3_2Pt88_512,           // 3.5",  2.88MB, 512 bytes/sector
+    F3_20Pt8_512,           // 3.5",  20.8MB, 512 bytes/sector
+    F3_720_512,             // 3.5",  720KB,  512 bytes/sector
+    F5_360_512,             // 5.25", 360KB,  512 bytes/sector
+    F5_320_512,             // 5.25", 320KB,  512 bytes/sector
+    F5_320_1024,            // 5.25", 320KB,  1024 bytes/sector
+    F5_180_512,             // 5.25", 180KB,  512 bytes/sector
+    F5_160_512,             // 5.25", 160KB,  512 bytes/sector
+    RemovableMedia,         // Removable media other than floppy
+    FixedMedia,             // Fixed hard disk media
+    F3_120M_512,            // 3.5", 120M Floppy
+    F3_640_512,             // 3.5" ,  640KB,  512 bytes/sector
+    F5_640_512,             // 5.25",  640KB,  512 bytes/sector
+    F5_720_512,             // 5.25",  720KB,  512 bytes/sector
+    F3_1Pt2_512,            // 3.5" ,  1.2Mb,  512 bytes/sector
+    F3_1Pt23_1024,          // 3.5" ,  1.23Mb, 1024 bytes/sector
+    F5_1Pt23_1024,          // 5.25",  1.23MB, 1024 bytes/sector
+    F3_128Mb_512,           // 3.5" MO 128Mb   512 bytes/sector
+    F3_230Mb_512,           // 3.5" MO 230Mb   512 bytes/sector
+    F8_256_128,             // 8",     256KB,  128 bytes/sector
+    F3_200Mb_512,           // 3.5",   200M Floppy (HiFD)
+    F3_240M_512,            // 3.5",   240Mb Floppy (HiFD)
+    F3_32M_512);            // 3.5",   32Mb Floppy
+  MEDIA_TYPE = _MEDIA_TYPE;
+  PMEDIA_TYPE = ^MEDIA_TYPE;
+  TMediaType = MEDIA_TYPE;
+  PMediaType = PMEDIA_TYPE;
+
+
+  PDISK_GEOMETRY = ^DISK_GEOMETRY;
+  _DISK_GEOMETRY = record
+    Cylinders: LARGE_INTEGER;
+    MediaType: MEDIA_TYPE;
+    TracksPerCylinder: DWORD;
+    SectorsPerTrack: DWORD;
+    BytesPerSector: DWORD;
+  end;
+  DISK_GEOMETRY = _DISK_GEOMETRY;
+  TDiskGeometry = DISK_GEOMETRY;
+  PDiskGeometry = PDISK_GEOMETRY;
+
+  STORAGE_BUS_TYPE=
+  (
+    BusTypeUnknown       = $00,
+    BusTypeScsi          = $01,
+    BusTypeAtapi         = $02,
+    BusTypeAta           = $03,
+    BusType1394          = $04,
+    BusTypeSsa           = $05,
+    BusTypeFibre         = $06,
+    BusTypeUsb           = $07,
+    BusTypeRAID          = $08,
+    BusTypeiSCSI         = $09,
+    BusTypeSas           = $0A,
+    BusTypeSata          = $0B,
+    BusTypeMaxReserved   = $7F
+  );
+
+{
+  CONSTANTS AND TYPES FROM NTDDSCSI.H
+  Partially translated by Alexander Bagel
+  Copyright : © Fangorn Wizards Lab 1998 - 2009.
+}
+const
+  SCSI_IOCTL_DATA_IN = 1;
+  SCSIOP_MECHANISM_STATUS = $BD;
+
+type
+  USHORT = Word;
+
+  PSCSI_PASS_THROUGH_DIRECT = ^SCSI_PASS_THROUGH_DIRECT;
+  _SCSI_PASS_THROUGH_DIRECT = {packed} record
+    Length: USHORT;
+    ScsiStatus: UCHAR;
+    PathId: UCHAR;
+    TargetId: UCHAR;
+    Lun: UCHAR;
+    CdbLength: UCHAR;
+    SenseInfoLength: UCHAR;
+    DataIn: UCHAR;
+    DataTransferLength: ULONG;
+    TimeOutValue: ULONG;
+    DataBuffer: ULONG;
+    SenseInfoOffset: ULONG;
+    Cdb: array [0..15] of UCHAR;
+  end;
+  SCSI_PASS_THROUGH_DIRECT = _SCSI_PASS_THROUGH_DIRECT;
+
+  TSCSIPassThroughDirectBuffer = record
+    Header: SCSI_PASS_THROUGH_DIRECT;
+    SenseBuffer: array [0..31] of UCHAR;
+    DataBuffer: array [0..191] of UCHAR;
+  end;         
+
+
+{
+  PARTIAL TRANSLATION OF OTHER MS SDK HEADERS
+  Partially translated by J.L.Blackrow (by me :))
+}
+const
+  IOCTL_VOLUME_LOGICAL_TO_PHYSICAL = $560020;
+  IOCTL_VOLUME_GET_VOLUME_DISK_EXTENTS = $560000;
+
+  FSCTL_LOCK_VOLUME = (FILE_DEVICE_FILE_SYSTEM shl 16) or (6 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  FSCTL_UNLOCK_VOLUME = (FILE_DEVICE_FILE_SYSTEM shl 16) or (7 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+  FSCTL_DISMOUNT_VOLUME = (FILE_DEVICE_FILE_SYSTEM shl 16) or (8 shl 2) or (METHOD_BUFFERED) or (FILE_ANY_ACCESS shl 14);
+
+type
+
+// matches cfmgr32.h CM_DEVCAP_* definitions
+  TDeviceCapabilities =
+    (
+      dcUnknown = $00000000,
+      dcLockSupported = $00000001,
+      dcEjectSupported = $00000002,
+      dcRemovable = $00000004,
+      dcDockDevice = $00000008,
+      dcUniqueId = $00000010,
+      dcSilentInstall = $00000020,
+      dcRawDeviceOk = $00000040,
+      dcSurpriseRemovalOk = $00000080,
+      dcHardwareDisabled = $00000100,
+      dcNonDynamic = $00000200
+    );
+
+  //type definition for device descriptor
+  STORAGE_DEVICE_DESCRIPTOR = packed record
+    Version: ULONG;
+    Size: ULONG;
+    DeviceType: UCHAR;
+    DeviceTypeModifier: UCHAR;
+    RemovableMedia: boolean;
+    CommandQueueing: boolean;
+    VendorIdOffset: ULONG;
+    ProductIdOffset: ULONG;
+    ProductRevisionOffset: ULONG;
+    SerialNumberOffset: ULONG;
+    BusType: STORAGE_BUS_TYPE;
+    RawPropertiesLength: ULONG;
+    RawDeviceProperties: array[0..511] of byte;
+  end;
+
+  //Type definition for device query
+  STORAGE_PROPERTY_QUERY = packed record
+    PropertyId: DWORD;
+    QueryType: DWORD;
+    AdditionalParameters: PByte;
+  end;
+
+  //Type definition for getting physical drive number
+  TDiskExtent = record
+    DiskNumber: DWORD;
+    StartingOffset: LARGE_INTEGER;
+    ExtentLength: LARGE_INTEGER;
+  end;
+
+  //Type definition for getting physical drive number
+  TVolumeDiskExtents = record
+    NumberOfDiskExtents: DWORD;
+    Extents: array[0..0] of TDiskExtent;
+  end;
+
+  //Drive Length information
+  GET_LENGTH_INFORMATION = record
+    Length: Int64;
+  end;
+
+  //info about serial number
+  MEDIA_SERIAL_NUMBER_DATA= packed record
+    SerialNumberLength: Cardinal;
+    Result:Cardinal;
+    AuthCommand:Cardinal;
+    Reserved:Cardinal;
+    SerialNumberData: array [0..MAX_PATH] of char;
+   end;
+
+   //This structure prevents media removal
+  PREVENT_MEDIA_REMOVAL  = record
+    PreventMediaRemoval : ByteBool;
+  end;
+
+
+implementation
+
+end.

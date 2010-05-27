@@ -1,0 +1,10 @@
+del *.dcu /s
+del *.ppu /s
+del *.obj /s
+del *.~* /s
+del *.dsk /s
+del *.bk? /s
+del *.mps /s
+del *.rst /s
+del *.s /s
+del *.a /s
