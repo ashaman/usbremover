@@ -27,3 +27,7 @@ to use better realization of GetMountPoints method (with refreshing and so on) o
 into the buffer?
 
 5) Look a MSDN article for QueryDosDevice
+
+0:34 19.08.2010
+The question with GetMountPoints for each device was solved. There's no need in mount points for each device.
+Maybe later this will be done better than now...
