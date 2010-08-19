@@ -1,5 +1,5 @@
 1 VERSIONINFO
-FILEVERSION 2,0,1,308
+FILEVERSION 2,0,1,323
 PRODUCTVERSION 2,0,0,0
 {
  BLOCK "StringFileInfo"
@@ -9,7 +9,7 @@ PRODUCTVERSION 2,0,0,0
    VALUE "Comments", "USBRemover GUI Application\000"
    VALUE "CompanyName", "JLB Industries\000"
    VALUE "FileDescription", "An GUI frontend to the USBRemover service\000"
-   VALUE "FileVersion", "2.0.1.308\000"
+   VALUE "FileVersion", "2.0.1.323\000"
    VALUE "InternalName", "usbremover-v2\000"
    VALUE "LegalCopyright", "JLB Industries\000"
    VALUE "LegalTrademarks", "JLB Industries, Syntex Corporation\000"

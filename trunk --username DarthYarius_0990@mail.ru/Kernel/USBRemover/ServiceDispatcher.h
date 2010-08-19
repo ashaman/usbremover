@@ -34,8 +34,6 @@ private:
 	ProcessManager *procmgr; //process manager
 	HANDLE hInPipeHandle; //incoming pipe handle
 	HANDLE hOutPipeHandle; //outgoing pipe handle
-	//HANDLE hInEvtHandle; //incoming event handle
-	//HANDLE hOutEvtHandle; //outgoing pipe handle
 	HANDLE hDispatcherThread; //dispatcher thread
 
 	~ServiceDispatcher(); //destructor

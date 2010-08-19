@@ -65,81 +65,10 @@ void ServiceDispatcher::CreateChannel()
 	{
 		throw WinAPIException(GetLastError());
 	}
-	//creating synchro objects
-	//this->hInEvtHandle = CreateEvent(NULL, TRUE, TRUE, NULL);
-	//this->hOutEvtHandle = CreateEvent(NULL, TRUE, TRUE, NULL);
-	//if ((this->hInEvtHandle == INVALID_HANDLE_VALUE) ||
-	//	(this->hOutEvtHandle == INVALID_HANDLE_VALUE))
-	//{
-	//	throw WinAPIException(GetLastError());
-	//}
-	////using OVERLAPPED I/O
-	//OVERLAPPED over1;
-	//OVERLAPPED over2;
-	//over1.hEvent = this->hInEvtHandle;
-	//over2.hEvent = this->hOutEvtHandle;
-	//waiting for clients to attach them
-	//overlapped ConnectNamedPipe should return zero.
-	if (!ConnectNamedPipe(this->hInPipeHandle, NULL/*&over1*/))
+	if (!ConnectNamedPipe(this->hOutPipeHandle, NULL /*&over2*/))
 	{
 		throw WinAPIException(GetLastError());
 	}
-	//switching the error type
-	//switch(GetLastError())
-	//{
-	//	//waiting for the clients to connect
-	//	//we skip it and start waiting
-	//case ERROR_IO_PENDING:
-	//	{
-	//		break;
-	//	}
-	//	//client already connected
-	//case ERROR_PIPE_CONNECTED:
-	//	{
-	//		if (SetEvent(this->hInEvtHandle))
-	//			break;
-	//	}
-	//	//some kind of error occured
-	//default:
-	//	{
-	//		throw WinAPIException(GetLastError());
-	//	}
-	//}
-	//if (!ConnectNamedPipe(this->hOutPipeHandle, NULL /*&over2*/))
-	//{
-	//	throw WinAPIException(GetLastError());
-	//}
-	////switching the error type
-	//switch(GetLastError())
-	//{
-	//	//waiting for the clients to connect
-	//	//we skip it and start waiting
-	//case ERROR_IO_PENDING:
-	//	{
-	//		break;
-	//	}
-	//	//client already connected
-	//case ERROR_PIPE_CONNECTED:
-	//	{
-	//		if (SetEvent(this->hOutEvtHandle))
-	//			break;
-	//	}
-	//	//some kind of error occured
-	//default:
-	//	{
-	//		throw WinAPIException(GetLastError());
-	//	}
-	//}
-	////waiting the connection
-	//if(WaitForSingleObject(this->hInEvtHandle, INFINITE) != 0)
-	//{
-	//	throw WinAPIException(GetLastError());
-	//}
-	//if(WaitForSingleObject(this->hOutEvtHandle, INFINITE) != 0)
-	//{
-	//	throw WinAPIException(GetLastError());
-	//}
-	//impersonating client
 	ImpersonateNamedPipeClient(this->hInPipeHandle);
 	ImpersonateNamedPipeClient(this->hOutPipeHandle);
 }
@@ -160,8 +89,6 @@ ServiceDispatcher::~ServiceDispatcher()
 	DisconnectNamedPipe(this->hInPipeHandle);
 	CloseHandle(this->hOutPipeHandle);
 	CloseHandle(this->hInPipeHandle);
-	//CloseHandle(this->hInEvtHandle);
-	//CloseHandle(this->hOutEvtHandle);
 }
 
 /*
@@ -400,14 +327,10 @@ void ServiceDispatcher::WalkDeviceTree(DWORD level, DWORD index, DWORD parent,
 	//sending mount points
 	if (level == 3)
 	{
-		//string next position for copying
-		//size_t offset = 0;
 		for (size_t i = 0; i < mpts->size(); ++i)
 		{
+			//riting each mount point
 			WriteFile(this->hOutPipeHandle, (*mpts)[i], MAX_PATH, &numwr, NULL);
-			//_tcscpy(result->mountPoints+offset, mpts[i]);
-			//offset += _tcslen(mpts[i]);
-			//result->mountPoints[offset] = MTPNT_SEPARATOR;
 		}
 	}
 	DELOBJ(result);

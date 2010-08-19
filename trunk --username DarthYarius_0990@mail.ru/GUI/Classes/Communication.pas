@@ -28,51 +28,52 @@ type
 { Unicode char buffer}
 TWideCharArray = array[0..MAX_PATH] of WideChar;
 
-{ Message structure }
-OPINFO = packed record
-       //operation code
-       dwOpCode: DWORD;
-       //operation status
-       dwOpStatus: DWORD;
-end;
-POPINFO = ^OPINFO;
+  { Message structure }
+  OPINFO = record
+      //operation code
+      dwOpCode: DWORD;
+      //operation status
+      dwOpStatus: DWORD;
+  end;
+  POPINFO = ^OPINFO;
 
-{ Device index information }
-DEVINDEX = packed record
-	//device level: 1-2-3
-    dwDeviceLevel: DWORD;
-	//device number by order
-    dwDeviceNumber: DWORD;
-	//top device index
-    dwTopIndex: DWORD;
-end;
-PDEVINDEX = ^DEVINDEX;
+  { Device index information }
+  DEVINDEX = record
+    	//device level: 1-2-3
+      dwDeviceLevel: DWORD;
+     	//device number by order
+      dwDeviceNumber: DWORD;
+     	//top device index
+      dwTopIndex: DWORD;
+  end;
+  PDEVINDEX = ^DEVINDEX;
 
-{ Device information }
-DEVINFO = packed record
-	//indexes information
-	devIndex: DEVINDEX;
-	//parent number
-	dwParent: DWORD;
-	//device description
-    description: TWideCharArray;
-    //name
-    name: TWideCharArray;
-	//actual mount points count
-    dwMountPtsCount: DWORD;
-end;
-PDEVINFO = ^DEVINFO;
+  { Device information }
+  DEVINFO = record
+      //indexes information
+      devIndex: DEVINDEX;
+      //parent number
+      dwParent: DWORD;
+      //device description
+      description: TWideCharArray;
+      //name
+      name: TWideCharArray;
+      //actual mount points count
+      dwMountPtsCount: DWORD;
+  end;
+  PDEVINFO = ^DEVINFO;
 
-{ Process-locker info }
-PROC_INFO = packed record
-	//process id
-    dwId: DWORD;
-	//process name
-    name: TWideCharArray;
-	//file count
-	dwLockedFilesCount: DWORD;
-end;
-PPROC_INFO = ^PROC_INFO;
+
+  { Process-locker info }
+  PROC_INFO = record
+      //process id
+      dwId: DWORD;
+      //process name
+      name: TWideCharArray;
+      //file count
+      dwLockedFilesCount: DWORD;
+  end;
+  PPROC_INFO = ^PROC_INFO;
 
 { Operation codes }
 const
