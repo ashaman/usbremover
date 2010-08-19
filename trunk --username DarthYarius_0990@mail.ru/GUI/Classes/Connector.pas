@@ -14,41 +14,153 @@ unit Connector;
 interface
 
 uses
-  Classes, SysUtils, Windows, Communication, Device;
+  Classes, SysUtils, Windows, Communication, Device, Process;
 
 type
     {
         Description:
             Implements methods needed for IPC
     }
-    TPipeConnector = class(TObject)
-    private
-        hPipeHandle: HANDLE; //pipe handle
-        hThreadHandle: HANDLE; //thread handle
-        fDevices: TList; //all the devices
+  TPipeConnector = class(TObject)
+  private
+    hInPipeHandle:   HANDLE; //in pipe handle
+    hOutPipeHandle: HANDLE; //out pipe handle
+    hThreadHandle: HANDLE; //thread handle
+    fDevices:      TList;  //all the devices
+    fProcesses: TList; //all the processes
+    fRemovalFailed: TNotifyEvent; //device removal failed
+    fRemovalSucceeded: TNotifyEvent; //device removal succeeded
+    fSearchProgress: TNotifyEvent; //progress notification event
 
-        procedure Clear; //clears all the fields
-        function GetDevice(index: integer): TDevice; //indexer function
-        function GetDeviceCount: integer; //device count
-        procedure GetDevicesInformation; //gets the devices information
-        procedure PushDevice(device: TDevice;
-            deviceInfo: DEVINFO); //pushes the device to the list
-    public
-        constructor Create; //constructor
-        destructor Destroy; override; //destructor
+    procedure ClearDevices; //clears devices
+    procedure ClearProcesses; //clears processes
+    function GetDevice(index: integer): TDevice; //indexer function
+    function GetDeviceCount: integer; //device count
+    procedure GetBlockersInfo; //gets the blocking processes info
+    procedure GetDevicesInformation; //gets the devices information
+    procedure GetLockerList; //gets the locking processes list
+    procedure GetProgressInformation; //gets the progress information
+    procedure PushDevice(device: TDevice; deviceInfo: DEVINFO); //adds device
 
-        procedure EjectDevice(index: DEVINDEX); //tries to eject the device
-        procedure Refresh; //causes a device list refresh
-        property DeviceCount: integer read GetDeviceCount; //device count
-        property Devices[index: integer]: TDevice read GetDevice; //devices
-    end;
+  public
+
+    constructor Create; //constructor
+    destructor Destroy; override; //destructor
+
+    procedure EjectDevice(index: DEVINDEX); //tries to eject the device
+    procedure Refresh; //causes a device list refresh
+    property DeviceCount: integer Read GetDeviceCount; //device count
+    property Devices[index: integer]: TDevice Read GetDevice; //devices
+  end;
 
 
 implementation
 
 var
-    csThreading: CRITICAL_SECTION; //for synchronization
-    pself: TPipeConnector; //pointer to self
+  csThreading: CRITICAL_SECTION; //for synchronization
+  pself: TPipeConnector; //pointer to self
+
+
+{
+    Purpose:
+        Gets the locking processes and the files opened by them
+    Parameters:
+        None
+    Return value:
+        None
+}
+procedure TPipeConnector.GetLockerList;
+var
+    info: OPINFO; //operation info
+    numrd: DWORD; //number of read bytes
+    procInfo: PROC_INFO; //process info
+    i: integer; //loop index
+    process: TProcess; //process pointer
+    stringbuf: TWideCharArray; //wide string buffer
+begin
+    //reading service information twice - START and first PROGRESS
+    ReadFile(Self.hInPipeHandle, info, sizeof(OPINFO), numrd, nil);
+    while ((info.dwOpCode = PROCESS_LOCK_INFO) and
+        (info.dwOpStatus = OPERATION_PROGRESS)) do
+    begin
+        //reading process information
+        ReadFile(Self.hInPipeHandle, procInfo, sizeof(PROC_INFO), numrd, nil);
+        process := TProcess.Create(procInfo);
+        //reading blocked files path
+        for i := 0 to procInfo.dwLockedFilesCount-1 do
+        begin
+            ReadFile(Self.hInPipeHandle, stringbuf, MAX_PATH, numrd, nil);
+            process.AddFileName(stringbuf);
+        end;
+        //adding new process to the list
+        Self.fProcesses.Add(process);
+        //reading next portion of information
+        ReadFile(Self.hInPipeHandle, info, sizeof(OPINFO), numrd, nil);
+    end;
+end; //GetLockerList
+
+{
+    Purpose:
+        Gets the progress information (in percent)
+        and calls the event handler
+    Parameters:
+        None
+    Return value:
+        None
+}
+procedure TPipeConnector.GetProgressInformation;
+var
+  numrd: DWORD;  //number of read bytes
+  info:  OPINFO; //operation info
+  percentage: UCHAR; //progress percentage
+begin
+    //reading next portion of service info from the pipe
+    ReadFile(Self.hInPipeHandle, info, sizeof(OPINFO), numrd, nil);
+    while ((info.dwOpCode = PROCESS_SEARCH_HANDLES) and
+        (info.dwOpStatus = OPERATION_PROGRESS)) do
+    begin
+        //reading the execution percentage
+        ReadFile(Self.hInPipeHandle, percentage, sizeof(UCHAR), numrd, nil);
+        if Assigned(Self.fSearchProgress)
+        then begin
+            //notifying the listener
+            Self.fSearchProgress(TObject(@percentage));
+        end;
+        //reading next operation information
+        ReadFile(Self.hInPipeHandle, info, sizeof(OPINFO), numrd, nil);
+    end;
+end; //GetProgressInformation
+
+{
+    Purpose:
+        Wraps the functionality needed for handling of the
+        "Device eject failed" event
+    Parameters:
+        None
+    Return value:
+        None
+}
+procedure TPipeConnector.GetBlockersInfo;
+var
+  numrd: DWORD;  //number of read bytes
+  info:  OPINFO; //operation info buffer
+begin
+  //reading dext service information
+  ReadFile(Self.hInPipeHandle, info, sizeof(OPINFO), numrd, nil);
+  //checking the condition - if the search process has started
+  if ((info.dwOpCode = PROCESS_SEARCH_HANDLES) and
+    (info.dwOpStatus = OPERATION_START)) then
+  begin
+    //if the operation is in the progress,
+    //we get the progress info and send it
+    //to the listeners
+    Self.GetProgressInformation;
+    //getting locker processes
+    Self.GetLockerList;
+    //reading finishing service information
+    ReadFile(Self.hInPipeHandle, info, sizeof(OPINFO), numrd, nil);
+  end;
+end; //GetBlockersInfo
 
 {
     Purpose:
@@ -60,12 +172,12 @@ var
 }
 function TPipeConnector.GetDeviceCount: integer;
 begin
-    try
-        EnterCriticalSection(csThreading);
-        Result := fDevices.Count;
-    finally
-        LeaveCriticalSection(csThreading);
-    end;
+  try
+    EnterCriticalSection(csThreading);
+    Result := fDevices.Count;
+  finally
+    LeaveCriticalSection(csThreading);
+  end;
 end; //GetDeviceCount
 
 {
@@ -79,26 +191,26 @@ end; //GetDeviceCount
 }
 procedure TPipeConnector.PushDevice(device: TDevice; deviceInfo: DEVINFO);
 var
-    pdev: TDevice; //pointer to the device
+  pdev: TDevice; //pointer to the device
 begin
-    pdev := nil;
-    case deviceInfo.devIndex.dwDeviceLevel of
-        1: //device is a USB dev
-        begin
-            fDevices.Insert(deviceInfo.devIndex.dwDeviceNumber, device);
-        end;
-        2: //device is a drive
-        begin
-            pdev := TDevice(fDevices.Items[deviceInfo.devIndex.dwTopIndex]);
-            pdev.AddChild(device);
-        end;
-        3: //device is a volume
-        begin
-            pdev := TDevice(fDevices.Items[deviceInfo.devIndex.dwTopIndex]);
-            pdev.Children[deviceInfo.dwParent].AddChild(device);
-        end;
+  pdev := nil;
+  case deviceInfo.devIndex.dwDeviceLevel of
+    1: //device is a USB dev
+    begin
+      fDevices.Insert(deviceInfo.devIndex.dwDeviceNumber, device);
     end;
-end;
+    2: //device is a drive
+    begin
+      pdev := TDevice(fDevices.Items[deviceInfo.devIndex.dwTopIndex]);
+      pdev.AddChild(device);
+    end;
+    3: //device is a volume
+    begin
+      pdev := TDevice(fDevices.Items[deviceInfo.devIndex.dwTopIndex]);
+      pdev.Children[deviceInfo.dwParent].AddChild(device);
+    end;
+  end;
+end; //PushDevice
 
 {
     Purpose:
@@ -110,34 +222,56 @@ end;
 }
 function TPipeConnector.GetDevice(index: integer): TDevice;
 begin
-    try
-        EnterCriticalSection(csThreading);
-        Result := TDevice(fDevices.Items[index]);
-    finally
-        LeaveCriticalSection(csThreading);
-    end;
+  try
+    EnterCriticalSection(csThreading);
+    Result := TDevice(fDevices.Items[index]);
+  finally
+    LeaveCriticalSection(csThreading);
+  end;
 end; //GetDevice
 
 {
     Purpose:
-        Clears all internal fields
+        Clears devices list
     Parameters:
         None
     Return value:
         None
 }
-procedure TPipeConnector.Clear;
+procedure TPipeConnector.ClearDevices;
 var
-    i: integer; //loop index
+  i: integer; //loop index
 begin
-    //cleaning all devices
-    for i := 0 to fDevices.Count-1 do
-    begin
-        TDevice(fDevices.Items[i]).Destroy;
-    end;
-    //clearing list
-    fDevices.Clear;
-end; //Clear
+  //cleaning all devices
+  for i := 0 to fDevices.Count - 1 do
+  begin
+    TDevice(fDevices.Items[i]).Destroy;
+  end;
+  //clearing list
+  fDevices.Clear;
+end; //ClearDevices
+
+{
+    Purpose:
+        Clears processes list
+    Parameters:
+        None
+    Return value:
+        None
+}
+procedure TPipeConnector.ClearProcesses;
+var
+  i: integer; //loop index
+begin
+  //cleaning all devices
+  for i := 0 to fProcesses.Count - 1 do
+  begin
+    TProcess(fProcesses.Items[i]).Destroy;
+  end;
+  //clearing list
+  fProcesses.Clear;
+end; //ClearProcesses
+
 
 {
     Purpose:
@@ -150,23 +284,14 @@ end; //Clear
 }
 procedure TPipeConnector.EjectDevice(index: DEVINDEX);
 var
-    numwr: DWORD; //number of written bytes
-    numrd: DWORD; //number of read bytes
-    info: OPINFO; //operation info
+  numwr: DWORD;  //number of written bytes
+  info:  OPINFO; //operation info
 begin
-    //sending an ejection request
-    info.dwOpCode := DEVICE_EJECT_REQUEST;
-    info.dwOpStatus := OPERATION_START;
-    WriteFile(self.hPipeHandle, info, sizeof(OPINFO), numwr, nil);
-    WriteFile(self.hPipeHandle, index, sizeof(INDEX), numwr, nil);
-    //getting the answer
-    ReadFile(self.hPipeHandle, info, sizeof(OPINFO), numrd, nil);
-    //if the operation was successful, we return from the function
-    //otherwise, we start to handle the progress callbacks
-    if (info.dwOpCode <> DEVICE_EJECT_ACCEPT)
-    then begin
-        //TODO: implement callbacks
-    end;
+  //sending an ejection request
+  info.dwOpCode   := DEVICE_EJECT_REQUEST;
+  info.dwOpStatus := OPERATION_START;
+  WriteFile(self.hOutPipeHandle, info, sizeof(OPINFO), numwr, nil);
+  WriteFile(self.hOutPipeHandle, index, sizeof(INDEX), numwr, nil);
 end; //EjectDevice
 
 {
@@ -180,41 +305,35 @@ end; //EjectDevice
 }
 procedure TPipeConnector.GetDevicesInformation;
 var
-    info: OPINFO; //operation info cache
-    numrd: DWORD; //number ow bytes read
-    deviceInfo: DEVINFO; //device info cache
-    i: Integer; //loop index
-    strbuf: LPWSTR; //mount points buffer
-    device: TDevice; //temporary buffer for device
+  info:   OPINFO;  //operation info cache
+  numrd:  DWORD;   //number ow bytes read
+  deviceInfo: DEVINFO; //device info cache
+  i:      integer; //loop index
+  strbuf: TWideCharArray;  //mount points buffer
+  device: TDevice; //temporary buffer for device
 begin
-    //clearing device buffers
-    self.Clear;
-    //reading service information
-    //ReadFile(self.hPipeHandle, info, sizeof(OPINFO), numrd, nil);
-    //if ((info.dwOpCode = DEVICE_REFRESH_ANSWER) and
-    //    (info.dwOpStatus = OPERATION_START))
-//    then begin
-        //starting to read device information
-        ReadFile(self.hPipeHandle, info, sizeof(OPINFO), numrd, nil);
-        //reading until the OPERATION_FINISH is received
-        while (info.dwOpStatus = OPERATION_PROGRESS) do
-        begin
-            //reading device information
-            ReadFile(self.hPipeHandle, deviceInfo, sizeof(DEVINFO), numrd, nil);
-            //creating a new device
-            device := TDevice.Create(deviceInfo);
-            //reading device mount points (if there are any)
-            for i := 0 to deviceInfo.dwMountPtsCount-1 do
-            begin
-                ReadFile(self.hPipeHandle, strbuf, MAX_PATH, numrd, nil);
-                device.AddMountPoint(strbuf);
-            end;
-            //pushing device to the list
-            PushDevice(device, deviceInfo);
-            //reading next portion of information from the pipe
-            ReadFile(self.hPipeHandle, info, sizeof(OPINFO), numrd, nil);
-        end;
-//    end;
+  //clearing device buffers
+  self.ClearDevices;
+  //starting to read device information
+  ReadFile(self.hInPipeHandle, info, sizeof(OPINFO), numrd, nil);
+  //reading until the OPERATION_FINISH is received
+  while (info.dwOpStatus = OPERATION_PROGRESS) do
+  begin
+    //reading device information
+    ReadFile(self.hInPipeHandle, deviceInfo, sizeof(DEVINFO), numrd, nil);
+    //creating a new device
+    device := TDevice.Create(deviceInfo);
+    //reading device mount points (if there are any)
+    for i := 0 to deviceInfo.dwMountPtsCount - 1 do
+    begin
+      ReadFile(self.hInPipeHandle, strbuf, MAX_PATH, numrd, nil);
+      device.AddMountPoint(strbuf);
+    end;
+    //pushing device to the list
+    PushDevice(device, deviceInfo);
+    //reading next portion of information from the pipe
+    ReadFile(self.hInPipeHandle, info, sizeof(OPINFO), numrd, nil);
+  end;
 end; //GetDevicesInformation
 
 {
@@ -227,29 +346,15 @@ end; //GetDevicesInformation
 }
 procedure TPipeConnector.Refresh;
 var
-   info: OPINFO; //operation info
-   numwr: DWORD; //numer of written bytes
+  info:  OPINFO; //operation info
+  numwr: DWORD;  //numer of written bytes
 begin
-    try
-        //suspending listener thread in order not to get refresh
-        //informatin twice
-        //SuspendThread(self.hThreadHandle);
-        ////entering critical section
-        //EnterCriticalSection(csThreading);
-        info.dwOpCode := DEVICE_REFRESH_REQUEST;
-        info.dwOpStatus := OPERATION_START;
-        //sending a refreash request. If it was sent successfully,
-        //we get the devices information
-        {if} WriteFile(self.hPipeHandle, info, sizeof(OPINFO), numwr, nil);
-        //then begin
-        //    self.GetDevicesInformation;
-        //end;
-    finally
-        ////leaving critical section
-        //LeaveCriticalSection(csThreading);
-        ////resuming listener thread
-        //ResumeThread(self.hThreadHandle);
-    end;
+  //setting query parameters
+  info.dwOpCode   := DEVICE_REFRESH_REQUEST;
+  info.dwOpStatus := OPERATION_START;
+  //sending a refreash request. If it was sent successfully,
+  //we get the devices information (in the monitor thread)
+  WriteFile(self.hOutPipeHandle, info, sizeof(OPINFO), numwr, nil);
 end; //Refresh
 
 {
@@ -258,29 +363,53 @@ end; //Refresh
 }
 function MonitorFunction(parameters: Pointer): DWORD; stdcall;
 var
-    info: OPINFO; //current operation information
-    numrd: DWORD; //number of bytes read
-    hPipe: HANDLE; //pointer to self
+  info:  OPINFO; //current operation information
+  numrd: DWORD;  //number of bytes read
 begin
-    //typecasting
-    hPipe := HANDLE(parameters^);
-    //reading file information
-    while ReadFile(hPipe, info, sizeof(OPINFO), numrd, nil) do
-    begin
-        case info.dwOpCode of
-            DEVICE_REFRESH_ANSWER:
-            begin
-                try
-                    EnterCriticalSection(csThreading);
-                    pself.GetDevicesInformation;
-                finally
-                    LeaveCriticalSection(csThreading);
-                end;
-            end; //DEVICE_REFRESH_ANSWER
+  //reading file information
+  while ReadFile(pself.hInPipeHandle, info, sizeof(OPINFO), numrd, nil) do
+  begin
+    //choosing the operation, depending on received code
+    case info.dwOpCode of
+      //device refresh information
+      DEVICE_REFRESH_ANSWER:
+      begin
+        //starting to get information
+        if (info.dwOpStatus = OPERATION_START) then
+        begin
+          try
+            EnterCriticalSection(csThreading);
+            //getting devices information
+            pself.GetDevicesInformation;
+          finally
+            LeaveCriticalSection(csThreading);
+          end;
         end;
+      end; //DEVICE_REFRESH_ANSWER
+      //device was ejected successfully - we do a notification
+      DEVICE_EJECT_ACCEPT:
+      begin
+        //signaling about the successful removal
+        if Assigned(pself.fRemovalSucceeded)
+        then begin
+            pself.fRemovalSucceeded(nil);
+        end;
+      end; //DEVICE_EJECT_ACCEPT
+      //ejection failed
+      DEVICE_EJECT_REJECT:
+      begin
+        //signaling about the failure
+        if Assigned(pself.fRemovalFailed)
+        then begin
+            pself.fRemovalFailed(nil);
+        end;
+        //getting blockers info
+        pself.GetBlockersInfo;
+      end; //DEVICE_EJECT_REJECT
     end;
-    //we should never be here...
-    Result := NO_ERROR;
+  end;
+  //we should never be here...
+  Result := NO_ERROR;
 end;
 
 {
@@ -291,28 +420,39 @@ end;
 }
 constructor TPipeConnector.Create;
 var
-    threadId: DWORD;
+  threadId: DWORD;
 begin
-     inherited Create;
-     //connecting to the named pipe
-     WaitNamedPipeW(@PIPE_NAME[1], DWORD(NMPWAIT_WAIT_FOREVER));
-     self.hPipeHandle := CreateFileW(@PIPE_NAME[1], GENERIC_READ or GENERIC_WRITE,
-           FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING,
-           FILE_ATTRIBUTE_NORMAL, 0);
-     //if the connetion failed - throw an exception
-     if (self.hPipeHandle = INVALID_HANDLE_VALUE)
-     then begin
-          //TODO: add exception support!
-     end;
-     //saving self pointer
-     pself := self;
-     //creating device list
-     fDevices := TList.Create;
-     //initializing critical section
-     InitializeCriticalSection(csThreading);
-     //creating monitor thread
-     self.hThreadHandle := CreateThread(nil, 0, @MonitorFunction,
-        LPCVOID(@self.hPipeHandle), 0, threadId);
+  inherited Create;
+  //connecting to the named pipes
+  WaitNamedPipeW(@PIPE_INCOMING_NAME[1], DWORD(NMPWAIT_WAIT_FOREVER));
+  Self.hInPipeHandle := CreateFileW(@PIPE_INCOMING_NAME[1], GENERIC_READ,
+    FILE_SHARE_READ or FILE_SHARE_WRITE, nil,
+    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  WaitNamedPipeW(@PIPE_OUTGOING_NAME[1], DWORD(NMPWAIT_WAIT_FOREVER));
+  Self.hOutPipeHandle := CreateFileW(@PIPE_OUTGOING_NAME[1], GENERIC_WRITE,
+    FILE_SHARE_READ or FILE_SHARE_WRITE, nil,
+    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  //if the connetion failed - throw an exception
+  if ((Self.hInPipeHandle = INVALID_HANDLE_VALUE) or
+    (Self.hOutPipeHandle = INVALID_HANDLE_VALUE)) then
+  begin
+    //TODO: add exception support!
+  end;
+  //initializing events with the null values
+  Self.fRemovalSucceeded := nil;
+  Self.fRemovalFailed := nil;
+  Self.fSearchProgress := nil;
+  //saving self pointer
+  pself    := self;
+  //creating device list
+  fDevices := TList.Create;
+  //creating process list
+  fProcesses := TList.Create;
+  //initializing critical section
+  InitializeCriticalSection(csThreading);
+  //creating monitor thread
+  self.hThreadHandle := CreateThread(nil, 0, @MonitorFunction,
+    LPCVOID(nil), 0, threadId);
 end; //constructor
 
 {
@@ -321,13 +461,19 @@ end; //constructor
 }
 destructor TPipeConnector.Destroy;
 begin
-    //terminating the monitor thread
-    TerminateThread(self.hThreadHandle, NO_ERROR);
-    //deleting critical section
-    DeleteCriticalSection(csThreading);
-    //closing the pipe
-    CloseHandle(self.hPipeHandle);
-    inherited Destroy;
+  //clearing internal data
+  self.ClearDevices;
+  self.fDevices.Destroy;
+  self.ClearProcesses;
+  self.fProcesses.Destroy;
+  //terminating the monitor thread
+  TerminateThread(self.hThreadHandle, NO_ERROR);
+  //deleting critical section
+  DeleteCriticalSection(csThreading);
+  //closing the pipes
+  CloseHandle(self.hInPipeHandle);
+  CloseHandle(self.hOutPipeHandle);
+  inherited Destroy;
 end; //destructor
 
 end.

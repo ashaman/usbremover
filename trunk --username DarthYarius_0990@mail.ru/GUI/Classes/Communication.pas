@@ -11,14 +11,14 @@ unit Communication;
 {$mode objfpc}{$H+}
 interface
 
-{$ALIGN 8}
-
 uses
     SysUtils, Windows;
 
 const
      //communication pipe name
-     PIPE_NAME: WideString = '\\.\pipe\usbremover';
+     //all is vice versa
+     PIPE_OUTGOING_NAME: WideString = '\\.\pipe\usbremover_inc';
+     PIPE_INCOMING_NAME: WideString = '\\.\pipe\usbremover_out';
      //mount points separator
      MTPNT_SEPARATOR: WideChar = '?';
      MAXSTRINGLEN: DWORD = MAX_PATH+1;
@@ -26,7 +26,7 @@ const
 type
 
 { Unicode char buffer}
-LPWSTR = array[0..MAX_PATH] of WideChar;
+TWideCharArray = array[0..MAX_PATH] of WideChar;
 
 { Message structure }
 OPINFO = packed record
@@ -55,9 +55,9 @@ DEVINFO = packed record
 	//parent number
 	dwParent: DWORD;
 	//device description
-    description: LPWSTR;
+    description: TWideCharArray;
     //name
-    name: LPWSTR;
+    name: TWideCharArray;
 	//actual mount points count
     dwMountPtsCount: DWORD;
 end;
@@ -68,7 +68,7 @@ PROC_INFO = packed record
 	//process id
     dwId: DWORD;
 	//process name
-    name: LPWSTR;
+    name: TWideCharArray;
 	//file count
 	dwLockedFilesCount: DWORD;
 end;
@@ -81,21 +81,21 @@ const
     OPERATION_FINISH = 3;
 
 //Device codes
-    DEVICE_REFRESH_REQUEST = 1; //I
-    DEVICE_REFRESH_ANSWER = 2; //O
+    DEVICE_REFRESH_REQUEST = 1; //O
+    DEVICE_REFRESH_ANSWER = 2; //I
 
 //Ejection codes
-    DEVICE_EJECT_REQUEST = 10; //I
-    DEVICE_EJECT_ACCEPT = 11; //O
-    DEVICE_EJECT_REJECT = 12; //O
-    DEVICE_EJECT_FORCED = 13; //I
+    DEVICE_EJECT_REQUEST = 10; //O
+    DEVICE_EJECT_ACCEPT = 11; //I
+    DEVICE_EJECT_REJECT = 12; //I
+    DEVICE_EJECT_FORCED = 13; //O
 
 //Process control codes
-    PROCESS_SEARCH_HANDLES = 20; //O
-    PROCESS_KILL_PROCESS = 21; //I
-    PROCESS_KILL_ACCEPT = 22; //O
-    PROCESS_KILL_REJECT = 23; //O
-    PROCESS_LOCK_INFO = 24; //O
+    PROCESS_SEARCH_HANDLES = 20; //I
+    PROCESS_KILL_PROCESS = 21; //O
+    PROCESS_KILL_ACCEPT = 22; //I
+    PROCESS_KILL_REJECT = 23; //I
+    PROCESS_LOCK_INFO = 24; //I
 
 
 implementation

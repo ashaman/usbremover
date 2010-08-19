@@ -55,6 +55,7 @@ object MainWnd: TMainWnd
       object MIViewRefresh: TMenuItem
         Caption = 'Refresh device list'
         ShortCut = 16466
+        OnClick = MIViewRefreshClick
       end
     end
     object MIHelp: TMenuItem
@@ -62,6 +63,7 @@ object MainWnd: TMainWnd
       object MIHelpIndex: TMenuItem
         Caption = 'Index'
         ShortCut = 112
+        OnClick = MIHelpIndexClick
       end
       object MIHelpAbout: TMenuItem
         Caption = 'About'

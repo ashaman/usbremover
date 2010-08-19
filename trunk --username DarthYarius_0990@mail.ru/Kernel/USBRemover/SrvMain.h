@@ -18,6 +18,8 @@
 #include <windows.h>
 #include <tchar.h>
 
+#include "ServiceDispatcher.h"
+
 /*
 	The following constants and variables are needed for
 	the correct work of the Windows Service Application

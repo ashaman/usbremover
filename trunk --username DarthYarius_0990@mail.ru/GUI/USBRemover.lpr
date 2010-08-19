@@ -7,7 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, LResources, MainForm, Settings, Connector, Device;
+  Forms, LResources, MainForm, Settings, Connector, Device, Process;
 
 {$IFDEF WINDOWS}{$R USBRemover.rc}{$ENDIF}
 

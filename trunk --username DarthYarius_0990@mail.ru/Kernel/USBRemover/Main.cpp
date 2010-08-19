@@ -32,22 +32,6 @@ _CrtMemState s1, s2, s3;
 */
 int _tmain(int argc, _TCHAR* argv[])
 {
-	//#ifdef DEBUG
-	//_CrtMemCheckpoint( &s1 );
-	//{
-	//	DeviceManager *manager = new DeviceManager();
-	//	//manager->Devices()[0]->Eject();
-	//	//manager->Devices()[1]->Eject();
-	//	//VolumeManager::Manager();
-	//	delete manager;
-	//}
-	//_CrtMemCheckpoint( &s2 );
-	//_CrtDumpMemoryLeaks();
-	//if ( _CrtMemDifference( &s3, &s1, &s2) )
-	//	_CrtMemDumpStatistics( &s3 );
-	//#endif
-
-
 	/*
 		Here we initialize the table of service entry points.
 		Each row consists of a service name and a pointer to
@@ -68,5 +52,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		_tprintf(_T("Start of service failed. Error %ld\n"), GetLastError());
 		return GetLastError();
 	}
+
 	return 0;
 }

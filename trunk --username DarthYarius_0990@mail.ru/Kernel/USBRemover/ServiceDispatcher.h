@@ -16,6 +16,7 @@
 #include "ProcessManager.h"
 #include "IMessageListener.h"
 #include "Communication.h"
+#include "SrvMain.h"
 
 /*
 	Description:
@@ -31,9 +32,13 @@ private:
 	DeviceManager *devmgr; //device manager
 	MessageManager *msgmgr; //message manager
 	ProcessManager *procmgr; //process manager
-	HANDLE hPipeHandle; //pipe handle
-	HANDLE hEvtHandle; //event handle
+	HANDLE hInPipeHandle; //incoming pipe handle
+	HANDLE hOutPipeHandle; //outgoing pipe handle
+	//HANDLE hInEvtHandle; //incoming event handle
+	//HANDLE hOutEvtHandle; //outgoing pipe handle
+	HANDLE hDispatcherThread; //dispatcher thread
 
+	~ServiceDispatcher(); //destructor
 	void CreateChannel(); //creating named pipe
 	void EjectDevice(); //ejecting a device
 	void SendDeviceInfo(); //sends device information to the client
@@ -43,13 +48,13 @@ private:
 		DWORD top, Device *current); //subroutine of SendDeviceInfo
 public:
 	ServiceDispatcher(HANDLE hStatusHandle, DWORD flags); //constructor
-	~ServiceDispatcher(); //destructor
 	void DispatchEvent(LPVOID lpEventData, DWORD dwEventType); //device message handler
 	void HandleRequests(SERVICE_STATUS &status); //handle requests
 	void Pause(); //stopping service for some time
 	void RefreshState(); //implements RefreshState method
 	void ReportProgress(byte percentage); //reports progress
 	void Resume(); //resuming the work
+	static void TerminateDispatcherThread(ServiceDispatcher *dispatcher); //terminates the dispatcher
 };
 
 #endif

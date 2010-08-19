@@ -36,7 +36,7 @@ type
         destructor Destroy; override; //destructor
 
         procedure AddChild(var device: TDevice); //adds a child
-        procedure AddMountPoint(point: LPWSTR); //adds a device mount point
+        procedure AddMountPoint(point: TWideCharArray); //adds a device mount point
         property ChildCount: integer read GetChildCount; //child count
         property Children[index: integer]: TDevice read GetChild; //children
         property Index: DEVINDEX read fIndex; //device index
@@ -65,9 +65,9 @@ end; //etChildCount
     Return value:
         None
 }
-procedure TDevice.AddMountPoint(point: LPWSTR);
+procedure TDevice.AddMountPoint(point: TWideCharArray);
 begin
-    fMountPoints.Add(point);
+    fMountPoints.Add(Trim(point));
 end;
 
 {

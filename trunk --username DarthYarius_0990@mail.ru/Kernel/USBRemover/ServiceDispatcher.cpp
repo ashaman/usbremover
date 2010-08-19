@@ -15,6 +15,8 @@
 const DWORD NUM_PIPE_INSTANCES = (DWORD)1;
 //buffering array size
 const DWORD BUF_SIZE = (DWORD)31;
+//syncro objects
+CRITICAL_SECTION csTermThread;
 
 /*
 	Purpose:
@@ -26,6 +28,8 @@ const DWORD BUF_SIZE = (DWORD)31;
 */
 ServiceDispatcher::ServiceDispatcher(HANDLE hStatusHandle, DWORD flags)
 {
+	//initializing critical sections
+	InitializeCriticalSection(&csTermThread);
 	//creating managers
 	this->devmgr = new DeviceManager();
 	this->msgmgr = new MessageManager(hStatusHandle, flags);
@@ -34,6 +38,9 @@ ServiceDispatcher::ServiceDispatcher(HANDLE hStatusHandle, DWORD flags)
 	this->msgmgr->AttachListener(*(this->devmgr));
 	this->devmgr->AttachListener(this);
 	this->procmgr->AttachListener(this);
+	//duplicating thread handle
+	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(),
+		&hDispatcherThread,	DUPLICATE_SAME_ACCESS, FALSE, DUPLICATE_SAME_ACCESS);
 }
 
 /*
@@ -47,56 +54,94 @@ ServiceDispatcher::ServiceDispatcher(HANDLE hStatusHandle, DWORD flags)
 void ServiceDispatcher::CreateChannel()
 {
 	//creating communication channels
-	this->hPipeHandle = CreateNamedPipe(PIPE_NAME, PIPE_ACCESS_DUPLEX |
-		FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 
+	this->hInPipeHandle = CreateNamedPipe(PIPE_INCOMING_NAME, PIPE_ACCESS_INBOUND /*|
+		FILE_FLAG_OVERLAPPED*/, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 
 		NUM_PIPE_INSTANCES, ZERO_BUFFER, ZERO_BUFFER, WAIT_PIPE_TIMEOUT, NULL);
-	if (this->hPipeHandle == INVALID_HANDLE_VALUE)
+	this->hOutPipeHandle = CreateNamedPipe(PIPE_OUTGOING_NAME, PIPE_ACCESS_OUTBOUND /*|
+		FILE_FLAG_OVERLAPPED*/, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+		NUM_PIPE_INSTANCES, ZERO_BUFFER, ZERO_BUFFER, WAIT_PIPE_TIMEOUT, NULL);
+	if ((this->hInPipeHandle == INVALID_HANDLE_VALUE) ||
+		(this->hOutPipeHandle == INVALID_HANDLE_VALUE))
 	{
 		throw WinAPIException(GetLastError());
 	}
-	//creating synchro object
-	this->hEvtHandle = CreateEvent(NULL, TRUE, TRUE, NULL);
-	if (this->hEvtHandle == INVALID_HANDLE_VALUE)
-	{
-		throw WinAPIException(GetLastError());
-	}
-	//using OVERLAPPED I/O
-	OVERLAPPED over;
-	over.hEvent = this->hEvtHandle;
+	//creating synchro objects
+	//this->hInEvtHandle = CreateEvent(NULL, TRUE, TRUE, NULL);
+	//this->hOutEvtHandle = CreateEvent(NULL, TRUE, TRUE, NULL);
+	//if ((this->hInEvtHandle == INVALID_HANDLE_VALUE) ||
+	//	(this->hOutEvtHandle == INVALID_HANDLE_VALUE))
+	//{
+	//	throw WinAPIException(GetLastError());
+	//}
+	////using OVERLAPPED I/O
+	//OVERLAPPED over1;
+	//OVERLAPPED over2;
+	//over1.hEvent = this->hInEvtHandle;
+	//over2.hEvent = this->hOutEvtHandle;
 	//waiting for clients to attach them
 	//overlapped ConnectNamedPipe should return zero.
-	if (ConnectNamedPipe(this->hPipeHandle, &over))
+	if (!ConnectNamedPipe(this->hInPipeHandle, NULL/*&over1*/))
 	{
 		throw WinAPIException(GetLastError());
 	}
 	//switching the error type
-	switch(GetLastError())
-	{
-		//waiting for the clients to connect
-		//we skip it and start waiting
-	case ERROR_IO_PENDING:
-		{
-			break;
-		}
-		//client already connected
-	case ERROR_PIPE_CONNECTED:
-		{
-			if (SetEvent(this->hEvtHandle))
-				break;
-		}
-		//some kind of error occured
-	default:
-		{
-			throw WinAPIException(GetLastError());
-		}
-	}
-	//waiting the connection
-	if(WaitForSingleObject(this->hEvtHandle, INFINITE) != 0)
-	{
-		throw WinAPIException(GetLastError());
-	}
+	//switch(GetLastError())
+	//{
+	//	//waiting for the clients to connect
+	//	//we skip it and start waiting
+	//case ERROR_IO_PENDING:
+	//	{
+	//		break;
+	//	}
+	//	//client already connected
+	//case ERROR_PIPE_CONNECTED:
+	//	{
+	//		if (SetEvent(this->hInEvtHandle))
+	//			break;
+	//	}
+	//	//some kind of error occured
+	//default:
+	//	{
+	//		throw WinAPIException(GetLastError());
+	//	}
+	//}
+	//if (!ConnectNamedPipe(this->hOutPipeHandle, NULL /*&over2*/))
+	//{
+	//	throw WinAPIException(GetLastError());
+	//}
+	////switching the error type
+	//switch(GetLastError())
+	//{
+	//	//waiting for the clients to connect
+	//	//we skip it and start waiting
+	//case ERROR_IO_PENDING:
+	//	{
+	//		break;
+	//	}
+	//	//client already connected
+	//case ERROR_PIPE_CONNECTED:
+	//	{
+	//		if (SetEvent(this->hOutEvtHandle))
+	//			break;
+	//	}
+	//	//some kind of error occured
+	//default:
+	//	{
+	//		throw WinAPIException(GetLastError());
+	//	}
+	//}
+	////waiting the connection
+	//if(WaitForSingleObject(this->hInEvtHandle, INFINITE) != 0)
+	//{
+	//	throw WinAPIException(GetLastError());
+	//}
+	//if(WaitForSingleObject(this->hOutEvtHandle, INFINITE) != 0)
+	//{
+	//	throw WinAPIException(GetLastError());
+	//}
 	//impersonating client
-	ImpersonateNamedPipeClient(this->hPipeHandle);
+	ImpersonateNamedPipeClient(this->hInPipeHandle);
+	ImpersonateNamedPipeClient(this->hOutPipeHandle);
 }
 
 /*
@@ -105,12 +150,18 @@ void ServiceDispatcher::CreateChannel()
 */
 ServiceDispatcher::~ServiceDispatcher()
 {	
+	//destroying internal managers
 	msgmgr->DetachListener(*(this->devmgr));
 	DELOBJ(this->devmgr);
 	DELOBJ(this->msgmgr);
 	DELOBJ(this->procmgr);
-	DisconnectNamedPipe(this->hPipeHandle);
-	CloseHandle(this->hPipeHandle);
+	//closing communication channels
+	DisconnectNamedPipe(this->hOutPipeHandle);
+	DisconnectNamedPipe(this->hInPipeHandle);
+	CloseHandle(this->hOutPipeHandle);
+	CloseHandle(this->hInPipeHandle);
+	//CloseHandle(this->hInEvtHandle);
+	//CloseHandle(this->hOutEvtHandle);
 }
 
 /*
@@ -170,18 +221,17 @@ void ServiceDispatcher::HandleRequests(SERVICE_STATUS &status)
 	{
 		//creating the channel
 		this->CreateChannel();
+		//main service loop
 		do
 		{
 			//buffer for the received information
-			POPINFO buffer = new OPINFO;
-			ZeroMemory(buffer,sizeof(buffer));
+			OPINFO buffer;
+			ZeroMemory(&buffer,sizeof(OPINFO));
 			//actual quantity of bytes read
 			DWORD rdbytes = 0;
 			//calling fileRead
-			if (!ReadFile(this->hPipeHandle, buffer, sizeof(OPINFO), &rdbytes, NULL))
+			if (!ReadFile(this->hInPipeHandle, &buffer, sizeof(OPINFO), &rdbytes, NULL))
 			{
-				//freeing buffer
-				DELOBJ(buffer);
 				//error code
 				DWORD errorCode = GetLastError();
 				//if the pipe was broken (connection closed)
@@ -189,16 +239,32 @@ void ServiceDispatcher::HandleRequests(SERVICE_STATUS &status)
 				{
 					//we try to reconnect
 					RevertToSelf();
-					DisconnectNamedPipe(this->hPipeHandle);
-					CloseHandle(this->hPipeHandle);
+					DisconnectNamedPipe(this->hInPipeHandle);
+					DisconnectNamedPipe(this->hOutPipeHandle);
+					CloseHandle(this->hInPipeHandle);
+					CloseHandle(this->hOutPipeHandle);
 					this->CreateChannel();
+				}
+				//in case if the handles were closed
+				else if (errorCode == ERROR_INVALID_HANDLE)
+				{
+					break;
 				}
 			}
 			else
 			{
-				//resolving codes to operations
-				this->ResolveQuery(buffer);
-				DELOBJ(buffer);
+				try
+				{
+					//second step - this critical section protects from the 
+					//destructor execution during the execution of method
+					EnterCriticalSection(&csTermThread);
+					//resolving codes to operations
+					this->ResolveQuery(&buffer);
+				}
+				catch(...)
+				{
+				}
+				LeaveCriticalSection(&csTermThread);
 			}
 		}
 		while (status.dwCurrentState != SERVICE_STOPPED);
@@ -240,11 +306,13 @@ void ServiceDispatcher::ResolveQuery(POPINFO pOperInfo)
 			this->devmgr->RefreshState();
 			break;
 		}
+		//try to eject device
 	case DEVICE_EJECT_REQUEST:
 		{
 			this->EjectDevice();
 			break;
 		}
+		//forced ejection
 	case DEVICE_EJECT_FORCED:
 		{
 			//TODO: add handler
@@ -272,7 +340,7 @@ void ServiceDispatcher::SendDeviceInfo()
 	//number of written bytes
 	DWORD numwr = 0;
 	//starting the operation
-	WriteFile(this->hPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
+	WriteFile(this->hOutPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
 	//sending device list information
 	for (size_t i = 0; i < this->devmgr->Devices().size(); ++i)
 	{
@@ -280,7 +348,7 @@ void ServiceDispatcher::SendDeviceInfo()
 	}
 	//finishing the operation
 	info.dwOpStatus = OPERATION_FINISH;
-	WriteFile(this->hPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
+	WriteFile(this->hOutPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
 }
 
 /*
@@ -327,8 +395,8 @@ void ServiceDispatcher::WalkDeviceTree(DWORD level, DWORD index, DWORD parent,
 	//sending information about the device operation
 	OPINFO info = {DEVICE_REFRESH_ANSWER, OPERATION_PROGRESS};
 	//writing to the channel
-	WriteFile(this->hPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
-	WriteFile(this->hPipeHandle, result, sizeof(DEVINFO), &numwr, NULL);
+	WriteFile(this->hOutPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
+	WriteFile(this->hOutPipeHandle, result, sizeof(DEVINFO), &numwr, NULL);
 	//sending mount points
 	if (level == 3)
 	{
@@ -336,7 +404,7 @@ void ServiceDispatcher::WalkDeviceTree(DWORD level, DWORD index, DWORD parent,
 		//size_t offset = 0;
 		for (size_t i = 0; i < mpts->size(); ++i)
 		{
-			WriteFile(this->hPipeHandle, (*mpts)[i], MAX_PATH, &numwr, NULL);
+			WriteFile(this->hOutPipeHandle, (*mpts)[i], MAX_PATH, &numwr, NULL);
 			//_tcscpy(result->mountPoints+offset, mpts[i]);
 			//offset += _tcslen(mpts[i]);
 			//result->mountPoints[offset] = MTPNT_SEPARATOR;
@@ -366,14 +434,14 @@ void ServiceDispatcher::EjectDevice()
 	//number of read bytes
 	DWORD numrd = 0;
 	//reading index information
-	ReadFile(this->hPipeHandle, &index, sizeof(index), &numrd, NULL);
+	ReadFile(this->hInPipeHandle, &index, sizeof(index), &numrd, NULL);
 	//trying to remove the device
 	if (this->devmgr->Devices()[index.dwTopIndex]->Eject())
 	{
 		//sending information about successful removal
 		OPINFO info = {DEVICE_EJECT_ACCEPT, MAXDWORD};
 		DWORD numwr = 0;
-		WriteFile(this->hPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
+		WriteFile(this->hOutPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
 	}
 	//the removal failed
 	else
@@ -381,11 +449,11 @@ void ServiceDispatcher::EjectDevice()
 		//sending information about failure
 		OPINFO info = {DEVICE_EJECT_REJECT, MAXDWORD};
 		DWORD numwr = 0;
-		WriteFile(this->hPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
+		WriteFile(this->hOutPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
 		//starting to search processes-blockers
 		info.dwOpCode = PROCESS_SEARCH_HANDLES;
 		info.dwOpStatus = OPERATION_START;
-		WriteFile(this->hPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
+		WriteFile(this->hOutPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
 		{
 			//TODO: map DOS and common mount points (reverse!); maybe with DeviceIoControl
 			//or GetMountPoints
@@ -401,7 +469,7 @@ void ServiceDispatcher::EjectDevice()
 		//finishing the search of blockers
 		info.dwOpCode = PROCESS_SEARCH_HANDLES;
 		info.dwOpStatus = OPERATION_FINISH;
-		WriteFile(this->hPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
+		WriteFile(this->hOutPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
 	}
 }
 
@@ -418,7 +486,7 @@ void ServiceDispatcher::SendLockInfo(LockInfo *lockers)
 	//sending start information
 	OPINFO opinfo = {PROCESS_LOCK_INFO, OPERATION_START};
 	DWORD numwr = 0;
-	WriteFile(this->hPipeHandle, &opinfo, sizeof(OPINFO), &numwr, NULL);
+	WriteFile(this->hOutPipeHandle, &opinfo, sizeof(OPINFO), &numwr, NULL);
 	//starting to send locker information
 	opinfo.dwOpStatus = OPERATION_PROGRESS;
 	//preparing structures for each process
@@ -434,18 +502,18 @@ void ServiceDispatcher::SendLockInfo(LockInfo *lockers)
 		//copying process name
 		_tcscpy(info->name, i->second.first);
 		//sending information
-		WriteFile(this->hPipeHandle, &opinfo, sizeof(OPINFO), &numwr, NULL);
-		WriteFile(this->hPipeHandle, info, sizeof(PROC_INFO), &numwr, NULL);
+		WriteFile(this->hOutPipeHandle, &opinfo, sizeof(OPINFO), &numwr, NULL);
+		WriteFile(this->hOutPipeHandle, info, sizeof(PROC_INFO), &numwr, NULL);
 		//sending file strings
 		for (size_t j = 0; j < info->dwLockedFilesCount; ++j)
 		{
-			WriteFile(this->hPipeHandle, (*i->second.second)[j], MAX_PATH, &numwr, NULL);
+			WriteFile(this->hOutPipeHandle, (*i->second.second)[j], MAX_PATH, &numwr, NULL);
 		}
 		DELOBJ(info);
 	}
 	//sending finish information
 	opinfo.dwOpCode = OPERATION_FINISH;
-	WriteFile(this->hPipeHandle, &opinfo, sizeof(OPINFO), &numwr, NULL);
+	WriteFile(this->hOutPipeHandle, &opinfo, sizeof(OPINFO), &numwr, NULL);
 	//starting to search processes-blockers
 }
 
@@ -463,7 +531,33 @@ void ServiceDispatcher::ReportProgress(byte percentage)
 	OPINFO info = {PROCESS_SEARCH_HANDLES, OPERATION_PROGRESS};
 	DWORD numwr = 0;
 	//sending information
-	WriteFile(this->hPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
+	WriteFile(this->hOutPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
 	//sending progress percentage
-	WriteFile(this->hPipeHandle, &percentage, sizeof(byte), &numwr, NULL);
+	WriteFile(this->hOutPipeHandle, &percentage, sizeof(byte), &numwr, NULL);
+}
+
+/*
+	Purpose:
+		Terminates the work of service correctly,
+		allowing to finish all I/O operations. Call this method from another 
+		thread to destroy the dispatcher
+	Parameters:
+		dispatcher - a pointer to the dispatcher
+	Return value:
+		None
+*/
+void ServiceDispatcher::TerminateDispatcherThread(ServiceDispatcher *dispatcher)
+{
+	//if we are the first, then the dispatcher is destroyed
+	//else we wait until the successful execution
+	EnterCriticalSection(&csTermThread);
+	//terminating dispatcher's thread
+	TerminateThread(dispatcher->hDispatcherThread, NO_ERROR);
+	//closing thread handle
+	CloseHandle(dispatcher->hDispatcherThread);
+	//deleting the dispatcher
+	DELOBJ(dispatcher);
+	LeaveCriticalSection(&csTermThread);
+	//deleting critical sections
+	DeleteCriticalSection(&csTermThread);
 }

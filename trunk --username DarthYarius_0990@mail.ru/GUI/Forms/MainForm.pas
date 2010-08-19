@@ -43,7 +43,9 @@ type
     procedure FormShow(Sender: TObject);
     procedure MICommandExitClick(Sender: TObject);
     procedure MIHelpAboutClick(Sender: TObject);
+    procedure MIHelpIndexClick(Sender: TObject);
     procedure MIViewHideToolbarClick(Sender: TObject);
+    procedure MIViewRefreshClick(Sender: TObject);
     procedure TrayIconDblClick(Sender: TObject);
   private
     { private declarations }
@@ -87,7 +89,6 @@ end; //FormCloseQuery
 procedure TMainWnd.FormCreate(Sender: TObject);
 begin
     pconnector := TPipeConnector.Create;
-    pconnector.Refresh;
 end;
 
 procedure TMainWnd.FormDestroy(Sender: TObject);
@@ -112,16 +113,19 @@ end; //TMainWnd.FormShow
 //Stops the execution of application
 procedure TMainWnd.MICommandExitClick(Sender: TObject);
 begin
-  //TODO: decide if the service should stop when the GUI is closed
   //TODO: settings or state serialization
   ExitOnClose := true;
-  //??? why this line is skipped???
   self.Close;
 end; //TMainWnd.MICommandExitClick
 
 procedure TMainWnd.MIHelpAboutClick(Sender: TObject);
 begin
      //TODO: put some code here
+end;
+
+procedure TMainWnd.MIHelpIndexClick(Sender: TObject);
+begin
+      pconnector.EjectDevice(pconnector.Devices[0].Index);
 end;
 
 procedure TMainWnd.MIViewHideToolbarClick(Sender: TObject);
@@ -135,6 +139,11 @@ begin
           self.ToolBar.Show;
           self.MIViewHideToolbar.Caption := 'Hide toolbar';
      end;
+end;
+
+procedure TMainWnd.MIViewRefreshClick(Sender: TObject);
+begin
+    pconnector.Refresh;
 end;
 
 initialization

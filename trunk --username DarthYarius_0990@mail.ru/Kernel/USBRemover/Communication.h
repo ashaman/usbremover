@@ -12,8 +12,10 @@
 
 #include <windows.h>
 
-//communication pipe name
-#define PIPE_NAME  _T("\\\\.\\pipe\\usbremover")
+//communication pipes names
+#define PIPE_INCOMING_NAME _T("\\\\.\\pipe\\usbremover_inc")
+#define PIPE_OUTGOING_NAME _T("\\\\.\\pipe\\usbremover_out")
+
 //mount points separator
 #define MTPNT_SEPARATOR _T('?');
 //maximal string length

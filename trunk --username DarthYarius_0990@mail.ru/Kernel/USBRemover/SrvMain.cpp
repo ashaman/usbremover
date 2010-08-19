@@ -17,8 +17,6 @@
 #include <stdio.h>
 #include "SrvMain.h"
 
-#include "ServiceDispatcher.h"
-
 /*
 	Forward declaration of functions
 */
@@ -38,7 +36,7 @@ VOID WINAPI ReportServiceStatus(
 */
 SERVICE_STATUS_HANDLE serviceStatusHandle; //handle to service status
 SERVICE_STATUS serviceStatus; //service status
-ServiceDispatcher *dispatcher;
+ServiceDispatcher *dispatcher; //service dispatcher
 
 /*
 	Purpose: 
@@ -51,6 +49,7 @@ ServiceDispatcher *dispatcher;
 	Return value:
 		None
 */
+
 VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 {
 	//Setting the flags and fields
@@ -76,6 +75,8 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 
 	//Set the status to Running
 	ReportServiceStatus(SERVICE_RUNNING, NO_ERROR);
+
+	//Sleep(10000);
 
 	//Here - the work of service! It works until the "STOP" command is received
 	dispatcher->HandleRequests(serviceStatus);
@@ -126,9 +127,10 @@ DWORD WINAPI ServiceControl(DWORD dwControlCode, DWORD dwEventType,
 		{
 			//Stopping service (manually or on shutdown)
 			ReportServiceStatus(SERVICE_STOP_PENDING, NO_ERROR);
+			//setting new status
 			dwSvcStatus = SERVICE_STOPPED;
-			//ONLY DELETE!!!
-			DELOBJ(dispatcher);
+			//deleting dispatcher
+			ServiceDispatcher::TerminateDispatcherThread(dispatcher);
 			break;
 		}
 	case SERVICE_CONTROL_DEVICEEVENT:
