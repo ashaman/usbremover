@@ -428,15 +428,22 @@ begin
   Self.hInPipeHandle := CreateFileW(@PIPE_INCOMING_NAME[1], GENERIC_READ,
     FILE_SHARE_READ or FILE_SHARE_WRITE, nil,
     OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-  WaitNamedPipeW(@PIPE_OUTGOING_NAME[1], DWORD(NMPWAIT_WAIT_FOREVER));
-  Self.hOutPipeHandle := CreateFileW(@PIPE_OUTGOING_NAME[1], GENERIC_WRITE,
-    FILE_SHARE_READ or FILE_SHARE_WRITE, nil,
-    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+  Self.hOutPipeHandle := CreateNamedPipeW(@PIPE_OUTGOING_NAME[1],
+        PIPE_ACCESS_OUTBOUND, PIPE_TYPE_BYTE or PIPE_READMODE_BYTE or PIPE_WAIT,
+        1, 0, 0, 200, nil);
+  //WaitNamedPipeW(@PIPE_OUTGOING_NAME[1], DWORD(NMPWAIT_WAIT_FOREVER));
+  //Self.hOutPipeHandle := CreateFileW(@PIPE_OUTGOING_NAME[1], GENERIC_WRITE,
+  //  FILE_SHARE_READ or FILE_SHARE_WRITE, nil,
+  //  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
   //if the connetion failed - throw an exception
   if ((Self.hInPipeHandle = INVALID_HANDLE_VALUE) or
     (Self.hOutPipeHandle = INVALID_HANDLE_VALUE)) then
   begin
     //TODO: add exception support!
+  end;
+  if (not ConnectNamedPipe(Self.hOutPipeHandle, nil))
+  then begin
+
   end;
   //initializing events with the null values
   Self.fRemovalSucceeded := nil;

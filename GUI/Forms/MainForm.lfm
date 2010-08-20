@@ -28,7 +28,7 @@ object MainWnd: TMainWnd
     Top = 26
     Width = 503
     Align = alClient
-    DefaultItemHeight = 15
+    DefaultItemHeight = 17
     TabOrder = 1
   end
   object MainMenu: TMainMenu

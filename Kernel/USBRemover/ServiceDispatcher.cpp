@@ -54,9 +54,9 @@ ServiceDispatcher::ServiceDispatcher(HANDLE hStatusHandle, DWORD flags)
 void ServiceDispatcher::CreateChannel()
 {
 	//creating communication channels
-	this->hInPipeHandle = CreateNamedPipe(PIPE_INCOMING_NAME, PIPE_ACCESS_INBOUND /*|
-		FILE_FLAG_OVERLAPPED*/, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 
-		NUM_PIPE_INSTANCES, ZERO_BUFFER, ZERO_BUFFER, WAIT_PIPE_TIMEOUT, NULL);
+	//this->hInPipeHandle = CreateNamedPipe(PIPE_INCOMING_NAME, PIPE_ACCESS_INBOUND /*|
+	//	FILE_FLAG_OVERLAPPED*/, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 
+	//	NUM_PIPE_INSTANCES, ZERO_BUFFER, ZERO_BUFFER, WAIT_PIPE_TIMEOUT, NULL);
 	this->hOutPipeHandle = CreateNamedPipe(PIPE_OUTGOING_NAME, PIPE_ACCESS_OUTBOUND /*|
 		FILE_FLAG_OVERLAPPED*/, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
 		NUM_PIPE_INSTANCES, ZERO_BUFFER, ZERO_BUFFER, WAIT_PIPE_TIMEOUT, NULL);
@@ -69,8 +69,17 @@ void ServiceDispatcher::CreateChannel()
 	{
 		throw WinAPIException(GetLastError());
 	}
-	ImpersonateNamedPipeClient(this->hInPipeHandle);
-	ImpersonateNamedPipeClient(this->hOutPipeHandle);
+	WaitNamedPipe(PIPE_INCOMING_NAME, NMPWAIT_WAIT_FOREVER);
+	this->hInPipeHandle = CreateFile(PIPE_INCOMING_NAME, GENERIC_READ, FILE_SHARE_READ |
+		FILE_SHARE_WRITE, NULL, OPEN_EXISTING, ZERO_FLAGS, ZERO_HANDLE);
+	//if (!ConnectNamedPipe(this->hInPipeHandle, NULL))
+	//{
+	//	throw WinAPIException(GetLastError());
+	//}
+	//if (!ImpersonateNamedPipeClient(this->hOutPipeHandle))
+	//{
+	//	throw WinAPIException(GetLastError());
+	//}
 }
 
 /*
@@ -166,7 +175,6 @@ void ServiceDispatcher::HandleRequests(SERVICE_STATUS &status)
 				{
 					//we try to reconnect
 					RevertToSelf();
-					DisconnectNamedPipe(this->hInPipeHandle);
 					DisconnectNamedPipe(this->hOutPipeHandle);
 					CloseHandle(this->hInPipeHandle);
 					CloseHandle(this->hOutPipeHandle);
@@ -177,11 +185,16 @@ void ServiceDispatcher::HandleRequests(SERVICE_STATUS &status)
 				{
 					break;
 				}
+				//on x64: ERROR_PIPE_LISTENING if the client was not connected
 			}
 			else
 			{
 				try
 				{
+					if (!ImpersonateNamedPipeClient(this->hOutPipeHandle))
+					{
+						throw WinAPIException(GetLastError());
+					}
 					//second step - this critical section protects from the 
 					//destructor execution during the execution of method
 					EnterCriticalSection(&csTermThread);
