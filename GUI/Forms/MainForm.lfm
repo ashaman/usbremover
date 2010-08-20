@@ -1,11 +1,11 @@
 object MainWnd: TMainWnd
-  Left = 297
+  Left = 283
   Height = 353
   Top = 182
-  Width = 503
+  Width = 517
   Caption = 'USBRemover'
   ClientHeight = 333
-  ClientWidth = 503
+  ClientWidth = 517
   Menu = MainMenu
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
@@ -17,7 +17,7 @@ object MainWnd: TMainWnd
     Left = 0
     Height = 26
     Top = 0
-    Width = 503
+    Width = 517
     Caption = 'Main Toolbar'
     EdgeBorders = [ebLeft, ebTop, ebRight, ebBottom]
     TabOrder = 0
@@ -26,14 +26,14 @@ object MainWnd: TMainWnd
     Left = 0
     Height = 307
     Top = 26
-    Width = 503
+    Width = 517
     Align = alClient
     DefaultItemHeight = 15
     TabOrder = 1
   end
   object MainMenu: TMainMenu
-    left = 16
-    top = 264
+    left = 24
+    top = 32
     object MICommand: TMenuItem
       Caption = 'Command'
       object MICommandExit: TMenuItem
@@ -4360,15 +4360,40 @@ object MainWnd: TMainWnd
     }
     Visible = True
     OnDblClick = TrayIconDblClick
-    left = 72
-    top = 264
+    OnMouseDown = TrayIconMouseDown
+    left = 24
+    top = 80
   end
   object ImageList: TImageList
-    left = 128
-    top = 264
+    left = 24
+    top = 128
   end
   object TrayDisksPopupMenu: TPopupMenu
-    left = 208
-    top = 264
+    left = 24
+    top = 184
+    object MenuItem2: TMenuItem
+      Caption = 'New Item1'
+    end
+  end
+  object TrayAppPopupMenu: TPopupMenu
+    left = 24
+    top = 240
+    object TApmShowMainWnd: TMenuItem
+      Caption = 'Show main window'
+      OnClick = TApmShowMainWndClick
+    end
+    object TApmShowSettings: TMenuItem
+      Caption = 'Settings'
+    end
+    object TApmShowAboutDlg: TMenuItem
+      Caption = 'About'
+    end
+    object TApmSeparator: TMenuItem
+      Caption = '-'
+    end
+    object TApmExit: TMenuItem
+      Caption = 'Exit'
+      OnClick = TApmExitClick
+    end
   end
 end

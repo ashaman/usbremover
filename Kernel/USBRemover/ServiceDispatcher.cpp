@@ -502,8 +502,14 @@ void ServiceDispatcher::TerminateDispatcherThread(ServiceDispatcher *dispatcher)
 			it's OBLIGATORY to wait until it finishes. Otherwise, all 
 			heap-allocated variables will not be deallocated (because of 
 			TerminateThread() usage).
-			2) After the finish of input handling, 
+			2) After the finish of input handling, we step into the critical
+			section and terminate the main service's thread. The mesaage thread
+			(main thread) is still alive and it is used for work finalization.
+			3) Finally, the destructor is called for the service dispatcher
 	*/
+
+	//TODO: send "FINISH" message to the client
+
 	//if we are the first, then the dispatcher is destroyed
 	//else we wait until the successful execution
 	EnterCriticalSection(&csTermThread);
