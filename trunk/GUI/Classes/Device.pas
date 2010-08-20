@@ -111,7 +111,7 @@ begin
     fParent := nil;
     fChildren := TList.Create;
     fMountPoints := TStringList.Create;
-    fMountPoints.Capacity := deviceInfo.dwMountPtsCount;
+    fMountPoints.Capacity := deviceInfo.MountPtsCount;
     fDescription := deviceInfo.description;
     fName := deviceInfo.name;
 end; //Create
