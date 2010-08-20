@@ -7,6 +7,9 @@
 
 	Communication code definitions
 */
+
+//TODO: change the DWORD sizes to size_t
+
 #ifndef _H_COMMUNICATION
 #define _H_COMMUNICATION
 
