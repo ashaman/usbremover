@@ -15,8 +15,8 @@ uses
     SysUtils, Windows;
 
 const
-     //communication pipe name
-     //all is vice versa
+     //communication pipes names
+     //all is vice versa (compare to server side)
      PIPE_OUTGOING_NAME: WideString = '\\.\pipe\usbremover_inc';
      PIPE_INCOMING_NAME: WideString = '\\.\pipe\usbremover_out';
      //mount points separator
@@ -59,7 +59,7 @@ TWideCharArray = array[0..MAX_PATH] of WideChar;
       //name
       name: TWideCharArray;
       //actual mount points count
-      dwMountPtsCount: DWORD;
+      MountPtsCount: SIZE_T;
   end;
   PDEVINFO = ^DEVINFO;
 
@@ -71,7 +71,7 @@ TWideCharArray = array[0..MAX_PATH] of WideChar;
       //process name
       name: TWideCharArray;
       //file count
-      dwLockedFilesCount: DWORD;
+      LockedFilesCount: SIZE_T;
   end;
   PPROC_INFO = ^PROC_INFO;
 

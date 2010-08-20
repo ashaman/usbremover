@@ -26,6 +26,9 @@
 
 //TODO: if the procedure and method calls from another threads
 //are not suitable - use ManualResetEvent with the main dispatcher thread (loop do-while)
+
+//TODO: implement KillProcess, KillAllProcesses, ForcedRemoval, cient stopping
+
 class ServiceDispatcher: public IMessageListener, public IProgressCallbackListener
 {
 private:
@@ -42,8 +45,8 @@ private:
 	void SendDeviceInfo(); //sends device information to the client
 	void SendLockInfo(LockInfo *lockers); //sends process-locker info to the client
 	void ResolveQuery(POPINFO pOperInfo); //executes the query got from the client
-	void WalkDeviceTree(DWORD level, DWORD index, DWORD parent,
-		DWORD top, Device *current); //subroutine of SendDeviceInfo
+	void WalkDeviceTree(DWORD level, SIZE_T index, SIZE_T parent, 
+		SIZE_T top, Device *current); //subroutine of SendDeviceInfo
 public:
 	ServiceDispatcher(HANDLE hStatusHandle, DWORD flags); //constructor
 	void DispatchEvent(LPVOID lpEventData, DWORD dwEventType); //device message handler

@@ -8,7 +8,9 @@
 	Communication code definitions
 */
 
-//TODO: change the DWORD sizes to size_t
+//TODO: create codes for finishing the client part of the service
+//because it's necesary to stop the GUI (it creates the second 
+//communication channel)
 
 #ifndef _H_COMMUNICATION
 #define _H_COMMUNICATION
@@ -43,9 +45,9 @@ typedef struct _DEVINDEX
 	//device level: 1-2-3
 	DWORD dwDeviceLevel;
 	//device number by order
-	DWORD dwDeviceNumber;
+	SIZE_T DeviceNumber;
 	//top device index
-	DWORD dwTopIndex;
+	SIZE_T TopIndex;
 } DEVINDEX, *PDEVINDEX;
 
 /*
@@ -56,13 +58,13 @@ typedef struct _DEVINFO
 	//indexes information
 	DEVINDEX devIndex;
 	//parent number
-	DWORD dwParent;
+	SIZE_T Parent;
 	//device description
 	TCHAR description[MAXSTRINGLEN];
 	//name
 	TCHAR name[MAXSTRINGLEN];
 	//actual mount points count
-	DWORD dwMountPtsCount;
+	SIZE_T MountPtsCount;
 } DEVINFO, *PDEVINFO;
 
 /*
@@ -75,7 +77,7 @@ typedef struct _PROC_INFO
 	//process name
 	TCHAR name[MAXSTRINGLEN];
 	//file count
-	DWORD dwLockedFilesCount;
+	SIZE_T LockedFilesCount;
 } PROC_INFO, *PPROC_INFO;
 
 /*

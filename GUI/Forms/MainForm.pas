@@ -14,7 +14,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  Menus, ExtCtrls, ComCtrls, PopupNotifier,
+  Menus, ExtCtrls, ComCtrls, PopupNotifier, LCLType,
   Settings, Connector ; //application settings
 
 type
@@ -33,6 +33,7 @@ type
     MIView: TMenuItem;
     MIHelp: TMenuItem;
     MICommandExit: TMenuItem;
+    TrayDisksPopupMenu: TPopupMenu;
     ToolBar: TToolBar;
     TrayIcon: TTrayIcon;
     DeviceTreeView: TTreeView;
@@ -88,11 +89,15 @@ end; //FormCloseQuery
 
 procedure TMainWnd.FormCreate(Sender: TObject);
 begin
+    //creating the connector
     pconnector := TPipeConnector.Create;
+    //refreshing the device list
+    pconnector.Refresh;
 end;
 
 procedure TMainWnd.FormDestroy(Sender: TObject);
 begin
+    //calling the connector's destructor
     pconnector.Destroy;
 end;
 
@@ -120,12 +125,14 @@ end; //TMainWnd.MICommandExitClick
 
 procedure TMainWnd.MIHelpAboutClick(Sender: TObject);
 begin
-     //TODO: put some code here
+    //TODO: put a box with about information
 end;
 
 procedure TMainWnd.MIHelpIndexClick(Sender: TObject);
 begin
-      pconnector.EjectDevice(pconnector.Devices[0].Index);
+    Application.MessageBox('Sorry, not implemented yet :(',
+        'USBRemover', MB_OK or MB_ICONEXCLAMATION);
+     //TODO: put some code here
 end;
 
 procedure TMainWnd.MIViewHideToolbarClick(Sender: TObject);
@@ -143,6 +150,7 @@ end;
 
 procedure TMainWnd.MIViewRefreshClick(Sender: TObject);
 begin
+    //refreshing the device list
     pconnector.Refresh;
 end;
 

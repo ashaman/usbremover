@@ -18,6 +18,16 @@ const DWORD BUF_SIZE = (DWORD)31;
 //syncro objects
 CRITICAL_SECTION csTermThread;
 
+
+/*
+	Possible problems of ServiceDispatcher:
+	1) stopping service (read - calling destructors) before it has entered the
+	main loop - FIXED (?)
+	2) stopping service during a refresh event (volume, drive, device, etc.) - (???)
+	3) different managers synchronization - (???)
+	4) memory leaks - some parts of code were tested, others were not - (???)
+*/
+
 /*
 	Purpose:
 		Constructor. Initializes both device and message managers
@@ -54,14 +64,10 @@ ServiceDispatcher::ServiceDispatcher(HANDLE hStatusHandle, DWORD flags)
 void ServiceDispatcher::CreateChannel()
 {
 	//creating communication channels
-	//this->hInPipeHandle = CreateNamedPipe(PIPE_INCOMING_NAME, PIPE_ACCESS_INBOUND /*|
-	//	FILE_FLAG_OVERLAPPED*/, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 
-	//	NUM_PIPE_INSTANCES, ZERO_BUFFER, ZERO_BUFFER, WAIT_PIPE_TIMEOUT, NULL);
 	this->hOutPipeHandle = CreateNamedPipe(PIPE_OUTGOING_NAME, PIPE_ACCESS_OUTBOUND /*|
 		FILE_FLAG_OVERLAPPED*/, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
 		NUM_PIPE_INSTANCES, ZERO_BUFFER, ZERO_BUFFER, WAIT_PIPE_TIMEOUT, NULL);
-	if ((this->hInPipeHandle == INVALID_HANDLE_VALUE) ||
-		(this->hOutPipeHandle == INVALID_HANDLE_VALUE))
+	if (this->hOutPipeHandle == INVALID_HANDLE_VALUE)
 	{
 		throw WinAPIException(GetLastError());
 	}
@@ -69,17 +75,14 @@ void ServiceDispatcher::CreateChannel()
 	{
 		throw WinAPIException(GetLastError());
 	}
+	//connecting to client-created pipe
 	WaitNamedPipe(PIPE_INCOMING_NAME, NMPWAIT_WAIT_FOREVER);
 	this->hInPipeHandle = CreateFile(PIPE_INCOMING_NAME, GENERIC_READ, FILE_SHARE_READ |
 		FILE_SHARE_WRITE, NULL, OPEN_EXISTING, ZERO_FLAGS, ZERO_HANDLE);
-	//if (!ConnectNamedPipe(this->hInPipeHandle, NULL))
-	//{
-	//	throw WinAPIException(GetLastError());
-	//}
-	//if (!ImpersonateNamedPipeClient(this->hOutPipeHandle))
-	//{
-	//	throw WinAPIException(GetLastError());
-	//}
+	if (this->hInPipeHandle == INVALID_HANDLE_VALUE)
+	{
+		throw WinAPIException(GetLastError());
+	}
 }
 
 /*
@@ -95,7 +98,6 @@ ServiceDispatcher::~ServiceDispatcher()
 	DELOBJ(this->procmgr);
 	//closing communication channels
 	DisconnectNamedPipe(this->hOutPipeHandle);
-	DisconnectNamedPipe(this->hInPipeHandle);
 	CloseHandle(this->hOutPipeHandle);
 	CloseHandle(this->hInPipeHandle);
 }
@@ -171,7 +173,9 @@ void ServiceDispatcher::HandleRequests(SERVICE_STATUS &status)
 				//error code
 				DWORD errorCode = GetLastError();
 				//if the pipe was broken (connection closed)
-				if (errorCode == ERROR_BROKEN_PIPE)
+				//(added 20.08.2010) or the connection was lost (ERROR_PIPE_NOT_CONNECTED)
+				if ((errorCode == ERROR_BROKEN_PIPE) ||
+					(errorCode == ERROR_PIPE_NOT_CONNECTED))
 				{
 					//we try to reconnect
 					RevertToSelf();
@@ -191,11 +195,7 @@ void ServiceDispatcher::HandleRequests(SERVICE_STATUS &status)
 			{
 				try
 				{
-					if (!ImpersonateNamedPipeClient(this->hOutPipeHandle))
-					{
-						throw WinAPIException(GetLastError());
-					}
-					//second step - this critical section protects from the 
+					//this critical section protects from the 
 					//destructor execution during the execution of method
 					EnterCriticalSection(&csTermThread);
 					//resolving codes to operations
@@ -258,6 +258,7 @@ void ServiceDispatcher::ResolveQuery(POPINFO pOperInfo)
 			//TODO: add handler
 			break;
 		}
+		//TODO: add all other codes
 	default:
 		{
 			break;
@@ -304,8 +305,8 @@ void ServiceDispatcher::SendDeviceInfo()
 	Return value:
 		None
 */
-void ServiceDispatcher::WalkDeviceTree(DWORD level, DWORD index, DWORD parent,
-									   DWORD top, Device *current)
+void ServiceDispatcher::WalkDeviceTree(DWORD level, SIZE_T index, SIZE_T parent,
+									   SIZE_T top, Device *current)
 {
 	//buffer for mount points
 	StringList *mpts;
@@ -315,22 +316,22 @@ void ServiceDispatcher::WalkDeviceTree(DWORD level, DWORD index, DWORD parent,
 	PDEVINFO result = new DEVINFO;
 	//saving index information
 	result->devIndex.dwDeviceLevel = level;
-	result->devIndex.dwDeviceNumber = index;
-	result->devIndex.dwTopIndex = top;
+	result->devIndex.DeviceNumber = index;
+	result->devIndex.TopIndex = top;
 	//saving device information
 	_tcscpy(result->description, current->Description());
 	_tcscpy(result->name, current->FriendlyName());
 	//saving device parent information
-	result->dwParent = parent;
+	result->Parent = parent;
 	//working with mount points on volume level
 	if (level == 3)
 	{
 		mpts = dynamic_cast<Volume*>(current)->MountPoints();
-		result->dwMountPtsCount = mpts->size();
+		result->MountPtsCount = mpts->size();
 	}
 	else
 	{
-		result->dwMountPtsCount = 0;
+		result->MountPtsCount = 0;
 	}
 	//sending information about the device operation
 	OPINFO info = {DEVICE_REFRESH_ANSWER, OPERATION_PROGRESS};
@@ -340,10 +341,23 @@ void ServiceDispatcher::WalkDeviceTree(DWORD level, DWORD index, DWORD parent,
 	//sending mount points
 	if (level == 3)
 	{
-		for (size_t i = 0; i < mpts->size(); ++i)
+		for (StringList::iterator i = mpts->begin();
+			i != mpts->end(); ++i)
 		{
-			//riting each mount point
-			WriteFile(this->hOutPipeHandle, (*mpts)[i], MAX_PATH, &numwr, NULL);
+			/*
+				Fixed 20.08.2010 by Asha'man:
+				It is OBLIGATORY to send string information in such way (copying to
+				larger buffer, etc.), because the call to WriteFile may fail if the
+				actual size of string is less than declared in BUFFER_SIZE parameter
+				for WriteFile
+			*/
+			//copying strungs to buffer
+			LPTSTR buffer = new TCHAR[MAX_PATH+1];
+			_tcscpy(buffer, *i);
+			//writing each mount point
+			WriteFile(this->hOutPipeHandle, buffer, MAX_PATH, &numwr, NULL);
+			//deallocating memory
+			DELARRAY(buffer);
 		}
 	}
 	DELOBJ(result);
@@ -372,7 +386,7 @@ void ServiceDispatcher::EjectDevice()
 	//reading index information
 	ReadFile(this->hInPipeHandle, &index, sizeof(index), &numrd, NULL);
 	//trying to remove the device
-	if (this->devmgr->Devices()[index.dwTopIndex]->Eject())
+	if (this->devmgr->Devices()[index.TopIndex]->Eject())
 	{
 		//sending information about successful removal
 		OPINFO info = {DEVICE_EJECT_ACCEPT, MAXDWORD};
@@ -391,11 +405,9 @@ void ServiceDispatcher::EjectDevice()
 		info.dwOpStatus = OPERATION_START;
 		WriteFile(this->hOutPipeHandle, &info, sizeof(OPINFO), &numwr, NULL);
 		{
-			//TODO: map DOS and common mount points (reverse!); maybe with DeviceIoControl
-			//or GetMountPoints
 			//getting DOS mount point aliases
 			StringPairList dmpts = 
-				this->devmgr->Devices()[index.dwTopIndex]->DosMountPoints();
+				this->devmgr->Devices()[index.TopIndex]->DosMountPoints();
 			//getting lockers
 			LockInfo *lockers = 
 				this->procmgr->GetLockers(dmpts);
@@ -434,14 +446,14 @@ void ServiceDispatcher::SendLockInfo(LockInfo *lockers)
 		//getting process id
 		info->dwId = i->first;
 		//getting blocked files count
-		info->dwLockedFilesCount = i->second.second->size();
+		info->LockedFilesCount = i->second.second->size();
 		//copying process name
 		_tcscpy(info->name, i->second.first);
 		//sending information
 		WriteFile(this->hOutPipeHandle, &opinfo, sizeof(OPINFO), &numwr, NULL);
 		WriteFile(this->hOutPipeHandle, info, sizeof(PROC_INFO), &numwr, NULL);
 		//sending file strings
-		for (size_t j = 0; j < info->dwLockedFilesCount; ++j)
+		for (size_t j = 0; j < info->LockedFilesCount; ++j)
 		{
 			WriteFile(this->hOutPipeHandle, (*i->second.second)[j], MAX_PATH, &numwr, NULL);
 		}
@@ -484,6 +496,14 @@ void ServiceDispatcher::ReportProgress(byte percentage)
 */
 void ServiceDispatcher::TerminateDispatcherThread(ServiceDispatcher *dispatcher)
 {
+	/*
+		The idea is:
+			1) If the main service thread is handling the pipe output,
+			it's OBLIGATORY to wait until it finishes. Otherwise, all 
+			heap-allocated variables will not be deallocated (because of 
+			TerminateThread() usage).
+			2) After the finish of input handling, 
+	*/
 	//if we are the first, then the dispatcher is destroyed
 	//else we wait until the successful execution
 	EnterCriticalSection(&csTermThread);

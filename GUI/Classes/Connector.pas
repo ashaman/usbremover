@@ -39,6 +39,8 @@ type
     procedure GetBlockersInfo; //gets the blocking processes info
     procedure GetDevicesInformation; //gets the devices information
     procedure GetLockerList; //gets the locking processes list
+    function GetProcess(index: integer): TProcess; //indexer function
+    function GetProcessCount: integer; //property function
     procedure GetProgressInformation; //gets the progress information
     procedure PushDevice(device: TDevice; deviceInfo: DEVINFO); //adds device
 
@@ -47,10 +49,12 @@ type
     constructor Create; //constructor
     destructor Destroy; override; //destructor
 
+    property DeviceCount: integer read GetDeviceCount; //device count
+    property Devices[index: integer]: TDevice read GetDevice; //devices
     procedure EjectDevice(index: DEVINDEX); //tries to eject the device
+    property ProcessCount: integer read GetProcessCount; //process count
+    property Processes[index: integer]: TProcess read GetProcess; //processes
     procedure Refresh; //causes a device list refresh
-    property DeviceCount: integer Read GetDeviceCount; //device count
-    property Devices[index: integer]: TDevice Read GetDevice; //devices
   end;
 
 
@@ -60,6 +64,42 @@ var
   csThreading: CRITICAL_SECTION; //for synchronization
   pself: TPipeConnector; //pointer to self
 
+{
+    Purpose:
+        Gets the total blocking processes count
+    Parameters:
+        None
+    Return value:
+        Total number of blocking processes
+}
+function TPipeConnector.GetProcessCount: integer;
+begin
+    try
+        EnterCriticalSection(csThreading);
+        Result := Self.fProcesses.Count;
+    finally
+        LeaveCriticalSection(csThreading);
+    end;
+end; //GetProcessCount
+
+{
+    Purpose:
+        Gets the process by its index
+    Parameters:
+        index - index of the process
+    Return value:
+        A pointer to the process' instance
+}
+function TPipeConnector.GetProcess(index: integer): TProcess;
+begin
+    try
+        //synchronizing
+        EnterCriticalSection(csThreading);
+        Result := TProcess(Self.fProcesses.Items[index]);
+    finally
+        LeaveCriticalSection(csThreading);
+    end;
+end; //GetProcess
 
 {
     Purpose:
@@ -87,7 +127,7 @@ begin
         ReadFile(Self.hInPipeHandle, procInfo, sizeof(PROC_INFO), numrd, nil);
         process := TProcess.Create(procInfo);
         //reading blocked files path
-        for i := 0 to procInfo.dwLockedFilesCount-1 do
+        for i := 0 to procInfo.LockedFilesCount-1 do
         begin
             ReadFile(Self.hInPipeHandle, stringbuf, MAX_PATH, numrd, nil);
             process.AddFileName(stringbuf);
@@ -151,12 +191,17 @@ begin
   if ((info.dwOpCode = PROCESS_SEARCH_HANDLES) and
     (info.dwOpStatus = OPERATION_START)) then
   begin
-    //if the operation is in the progress,
-    //we get the progress info and send it
-    //to the listeners
+    //if the operation is in the progress, we get the progress
+    //info and send it to the listeners
     Self.GetProgressInformation;
-    //getting locker processes
-    Self.GetLockerList;
+    //synchronization is done for getter
+    try
+        EnterCriticalSection(csThreading);
+        //getting locker processes
+        Self.GetLockerList;
+    finally
+        LeaveCriticalSection(csThreading);
+    end;
     //reading finishing service information
     ReadFile(Self.hInPipeHandle, info, sizeof(OPINFO), numrd, nil);
   end;
@@ -324,7 +369,7 @@ begin
     //creating a new device
     device := TDevice.Create(deviceInfo);
     //reading device mount points (if there are any)
-    for i := 0 to deviceInfo.dwMountPtsCount - 1 do
+    for i := 0 to deviceInfo.MountPtsCount - 1 do
     begin
       ReadFile(self.hInPipeHandle, strbuf, MAX_PATH, numrd, nil);
       device.AddMountPoint(strbuf);
@@ -422,44 +467,42 @@ constructor TPipeConnector.Create;
 var
   threadId: DWORD;
 begin
-  inherited Create;
-  //connecting to the named pipes
-  WaitNamedPipeW(@PIPE_INCOMING_NAME[1], DWORD(NMPWAIT_WAIT_FOREVER));
-  Self.hInPipeHandle := CreateFileW(@PIPE_INCOMING_NAME[1], GENERIC_READ,
-    FILE_SHARE_READ or FILE_SHARE_WRITE, nil,
-    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-  Self.hOutPipeHandle := CreateNamedPipeW(@PIPE_OUTGOING_NAME[1],
-        PIPE_ACCESS_OUTBOUND, PIPE_TYPE_BYTE or PIPE_READMODE_BYTE or PIPE_WAIT,
-        1, 0, 0, 200, nil);
-  //WaitNamedPipeW(@PIPE_OUTGOING_NAME[1], DWORD(NMPWAIT_WAIT_FOREVER));
-  //Self.hOutPipeHandle := CreateFileW(@PIPE_OUTGOING_NAME[1], GENERIC_WRITE,
-  //  FILE_SHARE_READ or FILE_SHARE_WRITE, nil,
-  //  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-  //if the connetion failed - throw an exception
-  if ((Self.hInPipeHandle = INVALID_HANDLE_VALUE) or
-    (Self.hOutPipeHandle = INVALID_HANDLE_VALUE)) then
-  begin
-    //TODO: add exception support!
-  end;
-  if (not ConnectNamedPipe(Self.hOutPipeHandle, nil))
-  then begin
-
-  end;
-  //initializing events with the null values
-  Self.fRemovalSucceeded := nil;
-  Self.fRemovalFailed := nil;
-  Self.fSearchProgress := nil;
-  //saving self pointer
-  pself    := self;
-  //creating device list
-  fDevices := TList.Create;
-  //creating process list
-  fProcesses := TList.Create;
-  //initializing critical section
-  InitializeCriticalSection(csThreading);
-  //creating monitor thread
-  self.hThreadHandle := CreateThread(nil, 0, @MonitorFunction,
-    LPCVOID(nil), 0, threadId);
+    //TODO: implement exceptions on timeout and do application
+    //termination support in case there's no connection to the service
+    inherited Create;
+    //connecting to the named pipe servier->client
+    WaitNamedPipeW(@PIPE_INCOMING_NAME[1], DWORD(NMPWAIT_WAIT_FOREVER));
+    Self.hInPipeHandle := CreateFileW(@PIPE_INCOMING_NAME[1], GENERIC_READ,
+      FILE_SHARE_READ or FILE_SHARE_WRITE, nil,
+      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+    //creating second communication channel client->server
+    Self.hOutPipeHandle := CreateNamedPipeW(@PIPE_OUTGOING_NAME[1],
+          PIPE_ACCESS_OUTBOUND, PIPE_TYPE_BYTE or PIPE_READMODE_BYTE or PIPE_WAIT,
+          1, 0, 0, 200, nil);
+    if ((Self.hInPipeHandle = INVALID_HANDLE_VALUE) or
+      (Self.hOutPipeHandle = INVALID_HANDLE_VALUE)) then
+    begin
+      //TODO: add exception support!
+    end;
+    if (not ConnectNamedPipe(Self.hOutPipeHandle, nil))
+    then begin
+      //TODO: exceptions
+    end;
+    //initializing events with the null values
+    Self.fRemovalSucceeded := nil;
+    Self.fRemovalFailed := nil;
+    Self.fSearchProgress := nil;
+    //saving self pointer (for threading support)
+    pself    := self;
+    //creating device list
+    fDevices := TList.Create;
+    //creating process list
+    fProcesses := TList.Create;
+    //initializing critical section
+    InitializeCriticalSection(csThreading);
+    //creating monitor thread
+    self.hThreadHandle := CreateThread(nil, 0, @MonitorFunction,
+      LPCVOID(nil), 0, threadId);
 end; //constructor
 
 {
@@ -468,19 +511,25 @@ end; //constructor
 }
 destructor TPipeConnector.Destroy;
 begin
-  //clearing internal data
-  self.ClearDevices;
-  self.fDevices.Destroy;
-  self.ClearProcesses;
-  self.fProcesses.Destroy;
-  //terminating the monitor thread
-  TerminateThread(self.hThreadHandle, NO_ERROR);
-  //deleting critical section
-  DeleteCriticalSection(csThreading);
-  //closing the pipes
-  CloseHandle(self.hInPipeHandle);
-  CloseHandle(self.hOutPipeHandle);
-  inherited Destroy;
+    //clearing internal data
+    self.ClearDevices;
+    self.fDevices.Destroy;
+    self.ClearProcesses;
+    self.fProcesses.Destroy;
+    //terminating the monitor thread
+    try
+        EnterCriticalSection(csThreading);
+        TerminateThread(self.hThreadHandle, NO_ERROR);
+    finally
+        LeaveCriticalSection(csThreading);
+    end;
+    //deleting critical section
+    DeleteCriticalSection(csThreading);
+    //closing the pipes
+    DisconnectNamedPipe(Self.hOutPipeHandle);
+    CloseHandle(self.hInPipeHandle);
+    CloseHandle(self.hOutPipeHandle);
+    inherited Destroy;
 end; //destructor
 
 end.
