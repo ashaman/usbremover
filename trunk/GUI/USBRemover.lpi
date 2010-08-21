@@ -19,13 +19,13 @@
       <UseVersionInfo Value="True"/>
       <AutoIncrementBuild Value="True"/>
       <CurrentVersionNr Value="2"/>
-      <CurrentMinorRevNr Value="1"/>
-      <CurrentBuildNr Value="392"/>
+      <CurrentMinorRevNr Value="2"/>
+      <CurrentBuildNr Value="431"/>
       <ProjectVersion Value="2.0.0.0"/>
       <CharSet Value="04B0"/>
       <Comments Value="USBRemover GUI Application"/>
       <CompanyName Value="JLB Industries"/>
-      <FileDescription Value="An GUI frontend to the USBRemover service"/>
+      <FileDescription Value="A GUI frontend to the USBRemover service"/>
       <InternalName Value="usbremover-v2"/>
       <LegalCopyright Value="JLB Industries"/>
       <LegalTrademarks Value="JLB Industries, Syntex Corporation"/>
@@ -49,15 +49,16 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="28">
+    <Units Count="31">
       <Unit0>
         <Filename Value="USBRemover.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="USBRemover"/>
-        <CursorPos X="1" Y="14"/>
+        <CursorPos X="70" Y="12"/>
         <TopLine Value="1"/>
-        <UsageCount Value="71"/>
-        <SyntaxHighlighter Value="Delphi"/>
+        <EditorIndex Value="4"/>
+        <UsageCount Value="80"/>
+        <Loaded Value="True"/>
       </Unit0>
       <Unit1>
         <Filename Value="Main.pas"/>
@@ -66,8 +67,7 @@
         <UnitName Value="Main"/>
         <CursorPos X="24" Y="23"/>
         <TopLine Value="1"/>
-        <UsageCount Value="16"/>
-        <SyntaxHighlighter Value="Delphi"/>
+        <UsageCount Value="15"/>
       </Unit1>
       <Unit2>
         <Filename Value="Forms\MainForm.pas"/>
@@ -75,18 +75,17 @@
         <ComponentName Value="MainWnd"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="MainForm"/>
-        <CursorPos X="50" Y="207"/>
-        <TopLine Value="192"/>
+        <CursorPos X="3" Y="156"/>
+        <TopLine Value="153"/>
         <EditorIndex Value="0"/>
-        <UsageCount Value="71"/>
+        <UsageCount Value="80"/>
         <Loaded Value="True"/>
-        <SyntaxHighlighter Value="Delphi"/>
       </Unit2>
       <Unit3>
         <Filename Value="C:\Programs_x64\Lazarus\lcl\include\customform.inc"/>
         <CursorPos X="1" Y="761"/>
         <TopLine Value="575"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit3>
       <Unit4>
         <Filename Value="Classes\Settings.pas"/>
@@ -94,29 +93,27 @@
         <UnitName Value="Settings"/>
         <CursorPos X="31" Y="11"/>
         <TopLine Value="1"/>
-        <UsageCount Value="70"/>
-        <SyntaxHighlighter Value="Delphi"/>
+        <UsageCount Value="79"/>
       </Unit4>
       <Unit5>
         <Filename Value="C:\Programs_x64\Lazarus\lcl\include\menuitem.inc"/>
         <CursorPos X="1" Y="77"/>
         <TopLine Value="58"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit5>
       <Unit6>
         <Filename Value="Classes\MainFormController.pas"/>
         <UnitName Value="MainFormController"/>
         <CursorPos X="19" Y="5"/>
         <TopLine Value="1"/>
-        <UsageCount Value="16"/>
-        <SyntaxHighlighter Value="Delphi"/>
+        <UsageCount Value="15"/>
       </Unit6>
       <Unit7>
         <Filename Value="..\..\Delphi\usbremover\USBRemover.dpr"/>
         <UnitName Value="USBRemover"/>
         <CursorPos X="40" Y="19"/>
         <TopLine Value="1"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit7>
       <Unit8>
         <Filename Value="Classes\Communication.pas"/>
@@ -124,63 +121,61 @@
         <UnitName Value="Communication"/>
         <CursorPos X="1" Y="28"/>
         <TopLine Value="22"/>
-        <EditorIndex Value="2"/>
-        <UsageCount Value="66"/>
+        <EditorIndex Value="5"/>
+        <UsageCount Value="75"/>
         <Loaded Value="True"/>
-        <SyntaxHighlighter Value="Delphi"/>
       </Unit8>
       <Unit9>
         <Filename Value="Classes\Connector.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Connector"/>
-        <CursorPos X="46" Y="518"/>
-        <TopLine Value="514"/>
-        <EditorIndex Value="1"/>
-        <UsageCount Value="65"/>
+        <CursorPos X="19" Y="471"/>
+        <TopLine Value="467"/>
+        <EditorIndex Value="3"/>
+        <UsageCount Value="74"/>
         <Loaded Value="True"/>
-        <SyntaxHighlighter Value="Delphi"/>
       </Unit9>
       <Unit10>
         <Filename Value="C:\Programs\Lazarus\fpc\2.2.4\source\rtl\inc\objpash.inc"/>
         <CursorPos X="8" Y="146"/>
         <TopLine Value="135"/>
-        <UsageCount Value="9"/>
+        <UsageCount Value="8"/>
       </Unit10>
       <Unit11>
         <Filename Value="C:\Programs\Lazarus\fpc\2.2.4\source\rtl\win\wininc\base.inc"/>
         <CursorPos X="6" Y="185"/>
         <TopLine Value="174"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit11>
       <Unit12>
         <Filename Value="C:\Programs\Lazarus\fpc\2.2.4\source\rtl\win\sysosh.inc"/>
         <CursorPos X="3" Y="22"/>
         <TopLine Value="11"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit12>
       <Unit13>
         <Filename Value="C:\Programs\Lazarus\fpc\2.2.4\source\rtl\win\wininc\unifun.inc"/>
         <CursorPos X="10" Y="116"/>
         <TopLine Value="105"/>
-        <UsageCount Value="9"/>
+        <UsageCount Value="8"/>
       </Unit13>
       <Unit14>
         <Filename Value="C:\Programs\Lazarus\lcl\include\customform.inc"/>
         <CursorPos X="1" Y="694"/>
         <TopLine Value="683"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit14>
       <Unit15>
         <Filename Value="C:\Programs\Lazarus\fpc\2.2.4\source\rtl\win\wininc\func.inc"/>
         <CursorPos X="11" Y="385"/>
         <TopLine Value="374"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit15>
       <Unit16>
         <Filename Value="C:\Programs\Lazarus\fpc\2.2.4\source\rtl\win\wininc\redef.inc"/>
         <CursorPos X="136" Y="773"/>
         <TopLine Value="764"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit16>
       <Unit17>
         <Filename Value="Classes\Device.pas"/>
@@ -188,29 +183,28 @@
         <UnitName Value="Device"/>
         <CursorPos X="1" Y="98"/>
         <TopLine Value="87"/>
-        <EditorIndex Value="3"/>
-        <UsageCount Value="50"/>
+        <EditorIndex Value="6"/>
+        <UsageCount Value="59"/>
         <Loaded Value="True"/>
-        <SyntaxHighlighter Value="Delphi"/>
       </Unit17>
       <Unit18>
         <Filename Value="C:\Programs\Lazarus\fpc\2.2.4\source\rtl\win32\classes.pp"/>
         <UnitName Value="Classes"/>
         <CursorPos X="1" Y="1"/>
         <TopLine Value="14"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit18>
       <Unit19>
         <Filename Value="C:\Programs\Lazarus\fpc\2.2.4\source\rtl\objpas\classes\classesh.inc"/>
         <CursorPos X="3" Y="432"/>
         <TopLine Value="1837"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit19>
       <Unit20>
         <Filename Value="C:\Programs\Lazarus\fpc\2.2.4\source\rtl\win\wininc\struct.inc"/>
         <CursorPos X="6" Y="5040"/>
         <TopLine Value="5026"/>
-        <UsageCount Value="7"/>
+        <UsageCount Value="6"/>
       </Unit20>
       <Unit21>
         <Filename Value="Classes\Process.pas"/>
@@ -218,168 +212,196 @@
         <UnitName Value="Process"/>
         <CursorPos X="68" Y="70"/>
         <TopLine Value="10"/>
-        <UsageCount Value="50"/>
-        <SyntaxHighlighter Value="Delphi"/>
+        <UsageCount Value="59"/>
       </Unit21>
       <Unit22>
         <Filename Value="C:\Programs\Lazarus\fpc\2.2.4\source\rtl\inc\wstringh.inc"/>
         <CursorPos X="3" Y="46"/>
         <TopLine Value="16"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit22>
       <Unit23>
         <Filename Value="C:\Programs\Lazarus\lcl\include\menuitem.inc"/>
         <CursorPos X="1" Y="77"/>
         <TopLine Value="66"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit23>
       <Unit24>
         <Filename Value="C:\Programs_x64\Lazarus\fpc\2.2.4\source\rtl\win\wininc\base.inc"/>
         <CursorPos X="22" Y="71"/>
         <TopLine Value="52"/>
-        <UsageCount Value="9"/>
+        <UsageCount Value="8"/>
       </Unit24>
       <Unit25>
         <Filename Value="C:\Programs_x64\Lazarus\fpc\2.2.4\source\rtl\inc\systemh.inc"/>
         <CursorPos X="23" Y="88"/>
         <TopLine Value="67"/>
-        <UsageCount Value="9"/>
+        <UsageCount Value="8"/>
       </Unit25>
       <Unit26>
         <Filename Value="C:\Programs\Lazarus\lcl\dialogs.pp"/>
         <UnitName Value="Dialogs"/>
         <CursorPos X="34" Y="38"/>
         <TopLine Value="27"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit26>
       <Unit27>
         <Filename Value="C:\Programs\Lazarus\lcl\forms.pp"/>
         <UnitName Value="Forms"/>
         <CursorPos X="3" Y="1502"/>
         <TopLine Value="1491"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit27>
+      <Unit28>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="MainFormController"/>
+        <CursorPos X="28" Y="39"/>
+        <TopLine Value="24"/>
+        <EditorIndex Value="1"/>
+        <UsageCount Value="29"/>
+        <Loaded Value="True"/>
+      </Unit28>
+      <Unit29>
+        <Filename Value="C:\Programs\Lazarus\lcl\extctrls.pp"/>
+        <UnitName Value="ExtCtrls"/>
+        <CursorPos X="54" Y="1146"/>
+        <TopLine Value="1135"/>
+        <UsageCount Value="10"/>
+      </Unit29>
+      <Unit30>
+        <Filename Value="Forms\BlockedFilesForm.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="BlockedFilesWnd"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="BlockedFilesForm"/>
+        <CursorPos X="21" Y="7"/>
+        <TopLine Value="1"/>
+        <EditorIndex Value="2"/>
+        <UsageCount Value="21"/>
+        <Loaded Value="True"/>
+      </Unit30>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="127" Column="50" TopLine="116"/>
+        <Caret Line="193" Column="17" TopLine="172"/>
       </Position1>
       <Position2>
         <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="99" Column="23" TopLine="89"/>
+        <Caret Line="194" Column="17" TopLine="172"/>
       </Position2>
       <Position3>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="524" Column="25" TopLine="509"/>
+        <Filename Value="Forms\MainForm.pas"/>
+        <Caret Line="201" Column="17" TopLine="179"/>
       </Position3>
       <Position4>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="516" Column="1" TopLine="505"/>
+        <Filename Value="Forms\MainForm.pas"/>
+        <Caret Line="195" Column="17" TopLine="173"/>
       </Position4>
       <Position5>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="517" Column="1" TopLine="509"/>
+        <Filename Value="Forms\MainForm.pas"/>
+        <Caret Line="202" Column="17" TopLine="180"/>
       </Position5>
       <Position6>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="518" Column="1" TopLine="507"/>
+        <Filename Value="Forms\MainForm.pas"/>
+        <Caret Line="208" Column="22" TopLine="186"/>
       </Position6>
       <Position7>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="520" Column="1" TopLine="509"/>
+        <Filename Value="Forms\MainForm.pas"/>
+        <Caret Line="126" Column="1" TopLine="111"/>
       </Position7>
       <Position8>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="521" Column="1" TopLine="510"/>
+        <Filename Value="Forms\MainForm.pas"/>
+        <Caret Line="125" Column="16" TopLine="114"/>
       </Position8>
       <Position9>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="522" Column="1" TopLine="511"/>
+        <Filename Value="Forms\MainForm.pas"/>
+        <Caret Line="124" Column="1" TopLine="114"/>
       </Position9>
       <Position10>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="524" Column="1" TopLine="513"/>
+        <Filename Value="Forms\MainForm.pas"/>
+        <Caret Line="130" Column="1" TopLine="120"/>
       </Position10>
       <Position11>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="527" Column="1" TopLine="514"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="27" Column="51" TopLine="7"/>
       </Position11>
       <Position12>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="529" Column="1" TopLine="514"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="104" Column="24" TopLine="87"/>
       </Position12>
       <Position13>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="530" Column="31" TopLine="514"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="37" Column="48" TopLine="26"/>
       </Position13>
       <Position14>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="531" Column="1" TopLine="514"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="109" Column="45" TopLine="98"/>
       </Position14>
       <Position15>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="532" Column="1" TopLine="514"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="62" Column="27" TopLine="46"/>
       </Position15>
       <Position16>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="533" Column="1" TopLine="514"/>
+        <Filename Value="Forms\MainForm.pas"/>
+        <Caret Line="46" Column="24" TopLine="35"/>
       </Position16>
       <Position17>
-        <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="154" Column="78" TopLine="138"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="68" Column="52" TopLine="55"/>
       </Position17>
       <Position18>
-        <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="155" Column="78" TopLine="138"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="66" Column="68" TopLine="56"/>
       </Position18>
       <Position19>
-        <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="129" Column="33" TopLine="112"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="68" Column="40" TopLine="57"/>
       </Position19>
       <Position20>
-        <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="83" Column="5" TopLine="67"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="68" Column="34" TopLine="91"/>
       </Position20>
       <Position21>
-        <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="89" Column="15" TopLine="75"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="8" Column="22" TopLine="1"/>
       </Position21>
       <Position22>
         <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="91" Column="15" TopLine="75"/>
+        <Caret Line="124" Column="38" TopLine="113"/>
       </Position22>
       <Position23>
         <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="191" Column="17" TopLine="172"/>
+        <Caret Line="121" Column="1" TopLine="113"/>
       </Position23>
       <Position24>
         <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="192" Column="17" TopLine="172"/>
+        <Caret Line="59" Column="43" TopLine="59"/>
       </Position24>
       <Position25>
         <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="193" Column="17" TopLine="172"/>
+        <Caret Line="127" Column="52" TopLine="116"/>
       </Position25>
       <Position26>
-        <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="194" Column="17" TopLine="172"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="11" Column="28" TopLine="1"/>
       </Position26>
       <Position27>
-        <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="201" Column="17" TopLine="179"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="8" Column="58" TopLine="1"/>
       </Position27>
       <Position28>
-        <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="195" Column="17" TopLine="173"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="29" Column="40" TopLine="10"/>
       </Position28>
       <Position29>
         <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="202" Column="17" TopLine="180"/>
+        <Caret Line="178" Column="25" TopLine="172"/>
       </Position29>
       <Position30>
         <Filename Value="Forms\MainForm.pas"/>
-        <Caret Line="208" Column="22" TopLine="186"/>
+        <Caret Line="181" Column="31" TopLine="172"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>
@@ -391,13 +413,8 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)\"/>
-      <OtherUnitFiles Value="Forms\;Classes\"/>
+      <OtherUnitFiles Value="Forms\;Classes\;Controllers\"/>
     </SearchPaths>
-    <Parsing>
-      <SyntaxOptions>
-        <SyntaxMode Value="Delphi"/>
-      </SyntaxOptions>
-    </Parsing>
     <CodeGeneration>
       <SmartLinkUnit Value="True"/>
       <Checks>

@@ -7,7 +7,8 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, LResources, MainForm, Settings, Connector, Device, Process;
+  Forms, LResources, MainForm, Settings, Connector, Device, Process, 
+MainFormController, BlockedFilesForm;
 
 {$IFDEF WINDOWS}{$R USBRemover.rc}{$ENDIF}
 
@@ -19,6 +20,7 @@ begin
   Application.CreateForm(TMainWnd, MainWnd);
   //and here we hide it from the taskbar
   MainWnd.ShowInTaskBar := stNever;
+  Application.CreateForm(TBlockedFilesWnd, BlockedFilesWnd);
   Application.Run;
 end.
 
