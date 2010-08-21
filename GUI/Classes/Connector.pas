@@ -55,6 +55,14 @@ type
     property ProcessCount: integer read GetProcessCount; //process count
     property Processes[index: integer]: TProcess read GetProcess; //processes
     procedure Refresh; //causes a device list refresh
+
+    //events
+    property OnRemomalFailed: TNotifyEvent
+        read fRemovalFailed write fRemovalFailed;
+    property OnRemomalSucceeded: TNotifyEvent
+        read fRemovalSucceeded write fRemovalSucceeded;
+    property OnSearchProgress: TNotifyEvent
+        read fSearchProgress write fSearchProgress;
   end;
 
 

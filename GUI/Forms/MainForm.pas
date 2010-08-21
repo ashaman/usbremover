@@ -15,12 +15,10 @@ interface
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   Menus, ExtCtrls, ComCtrls, PopupNotifier, LCLType,
-  Settings, Connector ; //application settings
+  Settings; //application settings
 
 type
 
-
-    //TODO: implement form controller
 
   { TMainWnd }
 
@@ -71,10 +69,14 @@ type
 var
   MainWnd: TMainWnd;
 
+{==============================================================================}
 implementation
 
+uses
+    MainFormController; //main form controller
+
 var
-   pconnector: TPipeConnector;
+    controller:  TMainFormController; //controller instance
 
 { TMainWnd }
 
@@ -122,20 +124,16 @@ begin
     end; //else - ExitOnClose is false
 end; //FormCloseQuery
 
-//Form creation event handler
+//Form creation event handler. Creates the form controller
 procedure TMainWnd.FormCreate(Sender: TObject);
 begin
-    //creating the connector
-    pconnector := TPipeConnector.Create;
-    //refreshing the device list
-    pconnector.Refresh;
+    controller := TMainFormController.Create(self);
 end; //TMainWnd.FormCreate
 
-//Form destruction event handler
+//Form destruction event handler. Destroys the controller
 procedure TMainWnd.FormDestroy(Sender: TObject);
 begin
-    //calling the connector's destructor
-    pconnector.Destroy;
+    controller.Destroy;
 end; //TMainWnd.FormDestroy
 
 //Form hiding handler. Hides the main form and shows the program
@@ -174,38 +172,29 @@ begin
      //TODO: put some code here
 end; //TMainWnd.MIHelpIndexClick
 
+//Switches the toolbar state
 procedure TMainWnd.MIViewHideToolbarClick(Sender: TObject);
 begin
-    //TODO: do it better - with string constants (lists, etc.)
-     if (self.ToolBar.Visible)
-     then begin
-          self.ToolBar.Hide;
-          self.MIViewHideToolbar.Caption := 'Show toolbar';
-     end
-     else begin
-          self.ToolBar.Show;
-          self.MIViewHideToolbar.Caption := 'Hide toolbar';
-     end;
-end;
+    controller.SwitchToolBar;
+end; //TMainWnd.MIViewHideToolbarClick
 
 //Causes a device list refresh
 procedure TMainWnd.MIViewRefreshClick(Sender: TObject);
 begin
-    //refreshing the device list
-    pconnector.Refresh;
+    controller.Refresh;
 end; //TMainWnd.MIViewRefreshClick
 
 //Exits the application
 procedure TMainWnd.TApmExitClick(Sender: TObject);
 begin
     ExitOnClose := true;
-    self.Close;
+    Self.Close;
 end; //TMainWnd.TApmExitClick
 
+//Show the appplcation's main form (from the tray)
 procedure TMainWnd.TApmShowMainWndClick(Sender: TObject);
 begin
-
-end;
+end; //TMainWnd.TApmShowMainWndClick
 
 initialization
   {$I MainForm.lrs}
