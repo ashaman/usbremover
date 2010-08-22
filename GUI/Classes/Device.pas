@@ -40,6 +40,8 @@ type
         property ChildCount: integer read GetChildCount; //child count
         property Children[index: integer]: TDevice read GetChild; //children
         property Index: DEVINDEX read fIndex; //device index
+        property Description: WideString read fDescription; //description
+        property Name: WideString read fName; //device name
     end;
 
 implementation

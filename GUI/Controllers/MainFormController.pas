@@ -5,7 +5,8 @@ unit MainFormController;
 interface
 
 uses
-  Classes, SysUtils, Connector, Menus, ExtCtrls, MainForm;
+  Classes, SysUtils, Connector, Menus, ExtCtrls, MainForm, Communication,
+  Device, ComCtrls;
 
 const
     { ToolBar state labels }
@@ -13,11 +14,6 @@ const
     (
         'Show toolbar',
         'Hide toolbar'
-    );
-    ApplicationState: array [0..1] of string =
-    (
-        'Show main window',
-        'Hide main window'
     );
     BalloonTitle: array [0..1] of string =
     (
@@ -37,25 +33,46 @@ type
     private
         fMainWnd: TMainWnd; //view
         fPipeConnector: TPipeConnector; //model
-        fApplicationState: byte; //application state
         fToolBarState: byte; //toolbar state index
+        fDeviceIndex: DEVINDEX; //ejected device index
 
         //event handlers
+        procedure OnRefreshFinished(Sender: TObject); //refresh finished
         procedure OnRemovalFailed(Sender: TObject); //removal failed handler
         procedure OnRemovalSucceeded(Sender: TObject); //removal succeded handler
-        //procedure OnSearchProgress(Sender: TObject); //handle search progress
+
+        procedure AddTreeItems(Device: TDevice; Parent: TTreeNode); //adds items
 
     public
         constructor Create(mainWnd: TMainWnd); //constructor
         destructor Destroy; override; //destructor
 
         procedure Refresh; //refreshes view state
+        procedure RemoveDrive (Level: integer; Index: integer); //removes the device
         procedure SwitchToolBar; //switches the toolbar
     end;
 
 implementation
 
 {EVENT HANDLERS}
+
+//handles the refresh finish
+procedure TMainFormController.OnRefreshFinished(Sender: TObject);
+var
+    i: integer; //loop index
+begin
+    //TODO: works VERY VERY BAD
+    //DOESN'T SUPPORT RUSSIAN ENCODING
+    //some problems with threading - ?
+    Self.fMainWnd.DeviceTreeView.Items.Clear;
+    //adding devices to root
+    for i := 0 to Self.fPipeConnector.DeviceCount-1 do
+    begin
+        AddTreeItems(Self.fPipeConnector.Devices[i], nil);
+    end;
+    //TODO: add devices to the tree + to the menus (popup)
+    //TODO: perform full view clean
+end; //TMainFormController.OnRefreshFinished
 
 //handles the device removal success and shows the info in the tray
 procedure TMainFormController.OnRemovalSucceeded(Sender: TObject);
@@ -85,6 +102,50 @@ begin
 end; //TMainFormController.OnRemovalFailed
 
 {END EVENT HANDLERS}
+
+{
+    Purpose:
+        Adds all the devices to the TreeView
+    Parameters:
+        device - device to add
+        parent - parent node to attach hierarchy to
+    Return value:
+        None
+}
+procedure TMainFormController.AddTreeItems(Device: TDevice; Parent: TTreeNode);
+var
+    i: integer; //loop index
+    treeNode: TTreeNode; //new tree node
+    deviceName: string; //full device name
+begin
+    //TODO: add images to nodes + add mount points if there are any
+    //formatting device name
+    deviceName := WideCharToString(@(Device.Name)[1]) + ' - '
+        + WideCharToString(@(Device.Description)[1]);
+    //adding a new tree node
+    treeNode := Self.fMainWnd.DeviceTreeView.Items.AddChild(Parent, deviceName);
+    //performing the same operations on children
+    for i := 0 to Device.ChildCount -1 do
+    begin
+        AddTreeItems(Device.Children[i], treeNode);
+    end;
+end; //TMainFormController.AddTreeItems
+
+{
+    Purpose:
+        Sends the information about the drive removal
+    Parameters:
+        level - device level
+        index - device index on the level
+    Return value:
+        None
+}
+procedure TMainFormController.RemoveDrive(Level: integer; Index: integer);
+begin
+    //TODO: check the removal indexes
+    Self.fDeviceIndex.dwDeviceLevel := level;
+    Self.fDeviceIndex.dwDeviceNumber := index;
+end; //TMainFormController.RemoveDrive
 
 {
     Purpose:
@@ -145,7 +206,10 @@ begin
     Self.fPipeConnector := TPipeConnector.Create;
     //toolbar is shown
     Self.fToolBarState := 1;
-    Self.fPipeConnector.OnRemomalFailed := @Self.OnRemovalFailed;
+    //attaching listeners
+    Self.fPipeConnector.OnRefreshFinished := @Self.OnRefreshFinished;
+    Self.fPipeConnector.OnRemovalFailed := @Self.OnRemovalFailed;
+    Self.fPipeConnector.OnRemovalSucceeded := @Self.OnRemovalSucceeded;
 end; //constructor
 
 {

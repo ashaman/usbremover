@@ -23,10 +23,15 @@ type
   { TMainWnd }
 
   TMainWnd = class(TForm)
-    ImageList: TImageList;
+    MenuImageList: TImageList;
+    TVMIEject: TMenuItem;
+    MIViewSettings: TMenuItem;
+    TreeViewPopupMenu: TPopupMenu;
+    ToolbarImageList: TImageList;
     MainMenu: TMainMenu;
-    MenuItem1: TMenuItem;
-    MenuItem2: TMenuItem;
+    MenuItemSeparator1: TMenuItem;
+    MenuItemSeparator2: TMenuItem;
+    MICommandEject: TMenuItem;
     TApmExit: TMenuItem;
     TApmSeparator: TMenuItem;
     TApmShowAboutDlg: TMenuItem;
@@ -40,6 +45,13 @@ type
     MIView: TMenuItem;
     MIHelp: TMenuItem;
     MICommandExit: TMenuItem;
+    TBEject: TToolButton;
+    TBSeparator2: TToolButton;
+    TBExit: TToolButton;
+    TBSeparator1: TToolButton;
+    TBRefresh: TToolButton;
+    TBHelp: TToolButton;
+    TBAbout: TToolButton;
     TrayAppPopupMenu: TPopupMenu;
     TrayDisksPopupMenu: TPopupMenu;
     ToolBar: TToolBar;
@@ -50,6 +62,7 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormHide(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure MICommandEjectClick(Sender: TObject);
     procedure MICommandExitClick(Sender: TObject);
     procedure MIHelpAboutClick(Sender: TObject);
     procedure MIHelpIndexClick(Sender: TObject);
@@ -150,6 +163,16 @@ begin
   TrayIcon.Hide;
 end; //TMainWnd.FormShow
 
+//Ejects the device (through controller)
+procedure TMainWnd.MICommandEjectClick(Sender: TObject);
+begin
+    if Assigned(Self.DeviceTreeView.Selected)
+    then begin
+        controller.RemoveDrive(Self.DeviceTreeView.Selected.Level,
+            Self.DeviceTreeView.Selected.Index);
+    end;
+end; //TMainWnd.MICommandEjectClick
+
 //Stops the execution of application
 procedure TMainWnd.MICommandExitClick(Sender: TObject);
 begin
@@ -194,7 +217,9 @@ end; //TMainWnd.TApmExitClick
 //Show the appplcation's main form (from the tray)
 procedure TMainWnd.TApmShowMainWndClick(Sender: TObject);
 begin
+    Self.Show;
 end; //TMainWnd.TApmShowMainWndClick
+
 
 initialization
   {$I MainForm.lrs}
