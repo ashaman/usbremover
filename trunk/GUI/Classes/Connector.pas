@@ -31,6 +31,7 @@ type
     fRemovalFailed: TNotifyEvent; //device removal failed
     fRemovalSucceeded: TNotifyEvent; //device removal succeeded
     fSearchProgress: TNotifyEvent; //progress notification event
+    fRefreshFinished: TNotifyEvent; //refresh finished event
 
     procedure ClearDevices; //clears devices
     procedure ClearProcesses; //clears processes
@@ -57,9 +58,11 @@ type
     procedure Refresh; //causes a device list refresh
 
     //events
-    property OnRemomalFailed: TNotifyEvent
+    property OnRefreshFinished: TNotifyEvent
+        read fRefreshFinished write fRefreshFinished;
+    property OnRemovalFailed: TNotifyEvent
         read fRemovalFailed write fRemovalFailed;
-    property OnRemomalSucceeded: TNotifyEvent
+    property OnRemovalSucceeded: TNotifyEvent
         read fRemovalSucceeded write fRemovalSucceeded;
     property OnSearchProgress: TNotifyEvent
         read fSearchProgress write fSearchProgress;
@@ -434,6 +437,11 @@ begin
             EnterCriticalSection(csThreading);
             //getting devices information
             pself.GetDevicesInformation;
+            //firing the finish event
+            if Assigned(pself.fRefreshFinished)
+            then begin
+                pself.fRefreshFinished(nil);
+            end;
           finally
             LeaveCriticalSection(csThreading);
           end;
@@ -500,6 +508,7 @@ begin
     Self.fRemovalSucceeded := nil;
     Self.fRemovalFailed := nil;
     Self.fSearchProgress := nil;
+    Self.fRefreshFinished := nil;
     //saving self pointer (for threading support)
     pself    := self;
     //creating device list
