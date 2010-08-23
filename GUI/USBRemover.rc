@@ -1,15 +1,15 @@
 1 VERSIONINFO
-FILEVERSION 2,0,2,553
+FILEVERSION 2,0,2,630
 PRODUCTVERSION 2,0,0,0
 {
  BLOCK "StringFileInfo"
  {
-  BLOCK "040904B0"
+  BLOCK "040904E4"
   {
    VALUE "Comments", "USBRemover GUI Application\000"
    VALUE "CompanyName", "Asha'man\000"
    VALUE "FileDescription", "A GUI frontend to the USBRemover service\000"
-   VALUE "FileVersion", "2.0.2.553\000"
+   VALUE "FileVersion", "2.0.2.630\000"
    VALUE "InternalName", "usbremover-v2\000"
    VALUE "LegalCopyright", "Asha'man\000"
    VALUE "LegalTrademarks", "Asha'man\000"
@@ -20,7 +20,7 @@ PRODUCTVERSION 2,0,0,0
  }
  BLOCK "VarFileInfo"
  {
-  VALUE "Translation", 0x0409, 0x04B0
+  VALUE "Translation", 0x0409, 0x04E4
  }
 }
 

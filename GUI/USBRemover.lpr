@@ -21,6 +21,7 @@ begin
   //and here we hide it from the taskbar
   MainWnd.ShowInTaskBar := stNever;
   Application.CreateForm(TBlockedFilesWnd, BlockedFilesWnd);
+  BlockedFilesWnd.ShowInTaskBar := stNever;
   Application.Run;
 end.
 

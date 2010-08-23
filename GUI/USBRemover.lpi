@@ -20,9 +20,8 @@
       <AutoIncrementBuild Value="True"/>
       <CurrentVersionNr Value="2"/>
       <CurrentMinorRevNr Value="2"/>
-      <CurrentBuildNr Value="553"/>
+      <CurrentBuildNr Value="630"/>
       <ProjectVersion Value="2.0.0.0"/>
-      <CharSet Value="04B0"/>
       <Comments Value="USBRemover GUI Application"/>
       <CompanyName Value="Asha'man"/>
       <FileDescription Value="A GUI frontend to the USBRemover service"/>
@@ -49,14 +48,14 @@
         <PackageName Value="LCL"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="34">
+    <Units Count="35">
       <Unit0>
         <Filename Value="USBRemover.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="USBRemover"/>
-        <CursorPos X="73" Y="18"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="89"/>
+        <CursorPos X="43" Y="15"/>
+        <TopLine Value="4"/>
+        <UsageCount Value="92"/>
       </Unit0>
       <Unit1>
         <Filename Value="Main.pas"/>
@@ -73,10 +72,10 @@
         <ComponentName Value="MainWnd"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="MainForm"/>
-        <CursorPos X="32" Y="138"/>
-        <TopLine Value="125"/>
+        <CursorPos X="68" Y="60"/>
+        <TopLine Value="60"/>
         <EditorIndex Value="0"/>
-        <UsageCount Value="89"/>
+        <UsageCount Value="92"/>
         <Loaded Value="True"/>
       </Unit2>
       <Unit3>
@@ -91,7 +90,7 @@
         <UnitName Value="Settings"/>
         <CursorPos X="31" Y="11"/>
         <TopLine Value="1"/>
-        <UsageCount Value="88"/>
+        <UsageCount Value="91"/>
       </Unit4>
       <Unit5>
         <Filename Value="C:\Programs_x64\Lazarus\lcl\include\menuitem.inc"/>
@@ -119,16 +118,16 @@
         <UnitName Value="Communication"/>
         <CursorPos X="3" Y="52"/>
         <TopLine Value="33"/>
-        <UsageCount Value="84"/>
+        <UsageCount Value="87"/>
       </Unit8>
       <Unit9>
         <Filename Value="Classes\Connector.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Connector"/>
-        <CursorPos X="1" Y="444"/>
-        <TopLine Value="425"/>
+        <CursorPos X="1" Y="432"/>
+        <TopLine Value="421"/>
         <EditorIndex Value="2"/>
-        <UsageCount Value="83"/>
+        <UsageCount Value="86"/>
         <Loaded Value="True"/>
       </Unit9>
       <Unit10>
@@ -177,11 +176,9 @@
         <Filename Value="Classes\Device.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Device"/>
-        <CursorPos X="15" Y="116"/>
-        <TopLine Value="100"/>
-        <EditorIndex Value="3"/>
-        <UsageCount Value="68"/>
-        <Loaded Value="True"/>
+        <CursorPos X="18" Y="40"/>
+        <TopLine Value="41"/>
+        <UsageCount Value="71"/>
       </Unit17>
       <Unit18>
         <Filename Value="C:\Programs\Lazarus\fpc\2.2.4\source\rtl\win32\classes.pp"/>
@@ -208,7 +205,7 @@
         <UnitName Value="Process"/>
         <CursorPos X="68" Y="70"/>
         <TopLine Value="10"/>
-        <UsageCount Value="68"/>
+        <UsageCount Value="71"/>
       </Unit21>
       <Unit22>
         <Filename Value="C:\Programs\Lazarus\fpc\2.2.4\source\rtl\inc\wstringh.inc"/>
@@ -252,10 +249,10 @@
         <Filename Value="Controllers\MainFormController.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="MainFormController"/>
-        <CursorPos X="45" Y="169"/>
-        <TopLine Value="153"/>
+        <CursorPos X="5" Y="135"/>
+        <TopLine Value="120"/>
         <EditorIndex Value="1"/>
-        <UsageCount Value="38"/>
+        <UsageCount Value="41"/>
         <Loaded Value="True"/>
       </Unit28>
       <Unit29>
@@ -273,7 +270,7 @@
         <UnitName Value="BlockedFilesForm"/>
         <CursorPos X="21" Y="7"/>
         <TopLine Value="1"/>
-        <UsageCount Value="30"/>
+        <UsageCount Value="33"/>
       </Unit30>
       <Unit31>
         <Filename Value="Forms\MainForm.lfm"/>
@@ -285,9 +282,9 @@
       <Unit32>
         <Filename Value="C:\Programs\Lazarus\lcl\comctrls.pp"/>
         <UnitName Value="ComCtrls"/>
-        <CursorPos X="3" Y="2491"/>
-        <TopLine Value="2480"/>
-        <UsageCount Value="10"/>
+        <CursorPos X="31" Y="2080"/>
+        <TopLine Value="2072"/>
+        <UsageCount Value="11"/>
       </Unit32>
       <Unit33>
         <Filename Value="C:\Programs_x64\Lazarus\fpc\2.2.4\source\rtl\win\sysosh.inc"/>
@@ -295,127 +292,133 @@
         <TopLine Value="2"/>
         <UsageCount Value="10"/>
       </Unit33>
+      <Unit34>
+        <Filename Value="C:\Programs\Lazarus\lcl\include\treeview.inc"/>
+        <CursorPos X="3" Y="2026"/>
+        <TopLine Value="1930"/>
+        <UsageCount Value="10"/>
+      </Unit34>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="394" Column="1" TopLine="375"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="71" Column="1" TopLine="60"/>
       </Position1>
       <Position2>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="379" Column="1" TopLine="360"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="73" Column="1" TopLine="62"/>
       </Position2>
       <Position3>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="381" Column="1" TopLine="362"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="75" Column="1" TopLine="64"/>
       </Position3>
       <Position4>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="383" Column="1" TopLine="364"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="71" Column="1" TopLine="60"/>
       </Position4>
       <Position5>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="385" Column="1" TopLine="366"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="73" Column="1" TopLine="62"/>
       </Position5>
       <Position6>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="387" Column="1" TopLine="368"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="75" Column="1" TopLine="64"/>
       </Position6>
       <Position7>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="388" Column="1" TopLine="369"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="71" Column="1" TopLine="60"/>
       </Position7>
       <Position8>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="392" Column="1" TopLine="373"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="73" Column="1" TopLine="62"/>
       </Position8>
       <Position9>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="393" Column="23" TopLine="375"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="75" Column="1" TopLine="64"/>
       </Position9>
       <Position10>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="396" Column="1" TopLine="377"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="77" Column="11" TopLine="65"/>
       </Position10>
       <Position11>
-        <Filename Value="Classes\Connector.pas"/>
-        <Caret Line="444" Column="1" TopLine="425"/>
+        <Filename Value="Controllers\MainFormController.pas"/>
+        <Caret Line="78" Column="33" TopLine="60"/>
       </Position11>
       <Position12>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="67" Column="1" TopLine="48"/>
+        <Caret Line="74" Column="31" TopLine="62"/>
       </Position12>
       <Position13>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="69" Column="1" TopLine="50"/>
+        <Caret Line="69" Column="32" TopLine="60"/>
       </Position13>
       <Position14>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="71" Column="1" TopLine="52"/>
+        <Caret Line="73" Column="1" TopLine="62"/>
       </Position14>
       <Position15>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="123" Column="1" TopLine="104"/>
+        <Caret Line="71" Column="1" TopLine="60"/>
       </Position15>
       <Position16>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="124" Column="1" TopLine="105"/>
+        <Caret Line="76" Column="23" TopLine="62"/>
       </Position16>
       <Position17>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="126" Column="1" TopLine="107"/>
+        <Caret Line="71" Column="1" TopLine="60"/>
       </Position17>
       <Position18>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="128" Column="1" TopLine="109"/>
+        <Caret Line="73" Column="1" TopLine="62"/>
       </Position18>
       <Position19>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="130" Column="1" TopLine="111"/>
+        <Caret Line="71" Column="1" TopLine="60"/>
       </Position19>
       <Position20>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="123" Column="1" TopLine="104"/>
+        <Caret Line="73" Column="1" TopLine="62"/>
       </Position20>
       <Position21>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="124" Column="1" TopLine="105"/>
+        <Caret Line="71" Column="1" TopLine="60"/>
       </Position21>
       <Position22>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="126" Column="1" TopLine="107"/>
+        <Caret Line="73" Column="1" TopLine="62"/>
       </Position22>
       <Position23>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="128" Column="1" TopLine="109"/>
+        <Caret Line="71" Column="1" TopLine="60"/>
       </Position23>
       <Position24>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="130" Column="1" TopLine="111"/>
+        <Caret Line="73" Column="1" TopLine="62"/>
       </Position24>
       <Position25>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="123" Column="1" TopLine="104"/>
+        <Caret Line="71" Column="1" TopLine="60"/>
       </Position25>
       <Position26>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="124" Column="1" TopLine="105"/>
+        <Caret Line="73" Column="1" TopLine="62"/>
       </Position26>
       <Position27>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="126" Column="1" TopLine="107"/>
+        <Caret Line="71" Column="1" TopLine="60"/>
       </Position27>
       <Position28>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="128" Column="1" TopLine="109"/>
+        <Caret Line="75" Column="47" TopLine="62"/>
       </Position28>
       <Position29>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="133" Column="45" TopLine="113"/>
+        <Caret Line="71" Column="1" TopLine="60"/>
       </Position29>
       <Position30>
         <Filename Value="Controllers\MainFormController.pas"/>
-        <Caret Line="176" Column="33" TopLine="153"/>
+        <Caret Line="73" Column="1" TopLine="62"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>
@@ -457,31 +460,19 @@
     </Other>
   </CompilerOptions>
   <Debugging>
-    <BreakPoints Count="6">
+    <BreakPoints Count="3">
       <Item1>
         <Source Value="Controllers\MainFormController.pas"/>
-        <Line Value="123"/>
+        <Line Value="73"/>
       </Item1>
       <Item2>
-        <Source Value="Classes\Connector.pas"/>
-        <Line Value="429"/>
+        <Source Value="Controllers\MainFormController.pas"/>
+        <Line Value="71"/>
       </Item2>
       <Item3>
-        <Source Value="Classes\Connector.pas"/>
-        <Line Value="437"/>
-      </Item3>
-      <Item4>
-        <Source Value="Classes\Connector.pas"/>
-        <Line Value="444"/>
-      </Item4>
-      <Item5>
         <Source Value="Controllers\MainFormController.pas"/>
-        <Line Value="67"/>
-      </Item5>
-      <Item6>
-        <Source Value="Classes\Connector.pas"/>
-        <Line Value="372"/>
-      </Item6>
+        <Line Value="77"/>
+      </Item3>
     </BreakPoints>
     <Watches Count="3">
       <Item1>

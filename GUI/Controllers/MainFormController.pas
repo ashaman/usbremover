@@ -41,7 +41,8 @@ type
         procedure OnRemovalFailed(Sender: TObject); //removal failed handler
         procedure OnRemovalSucceeded(Sender: TObject); //removal succeded handler
 
-        procedure AddTreeItems(Device: TDevice; Parent: TTreeNode); //adds items
+        procedure AddTreeItems(Device: TDevice; Parent: TTreeNode;
+            index: integer); //adds items
 
     public
         constructor Create(mainWnd: TMainWnd); //constructor
@@ -63,13 +64,17 @@ var
 begin
     //TODO: works VERY VERY BAD
     //DOESN'T SUPPORT RUSSIAN ENCODING
-    //some problems with threading - ?
+    Self.fMainWnd.DeviceTreeView.BeginUpdate;
+    Self.fMainWnd.DeviceTreeView.Items.BeginUpdate;
     Self.fMainWnd.DeviceTreeView.Items.Clear;
     //adding devices to root
     for i := 0 to Self.fPipeConnector.DeviceCount-1 do
     begin
-        AddTreeItems(Self.fPipeConnector.Devices[i], nil);
+        AddTreeItems(Self.fPipeConnector.Devices[i], nil, 0);
     end;
+    Self.fMainWnd.DeviceTreeView.FullExpand;
+    Self.fMainWnd.DeviceTreeView.Items.EndUpdate;
+    Self.fMainWnd.DeviceTreeView.EndUpdate;
     //TODO: add devices to the tree + to the menus (popup)
     //TODO: perform full view clean
 end; //TMainFormController.OnRefreshFinished
@@ -109,25 +114,30 @@ end; //TMainFormController.OnRemovalFailed
     Parameters:
         device - device to add
         parent - parent node to attach hierarchy to
+        index - picture index
     Return value:
         None
 }
-procedure TMainFormController.AddTreeItems(Device: TDevice; Parent: TTreeNode);
+procedure TMainFormController.AddTreeItems(Device: TDevice;
+    Parent: TTreeNode; index: integer);
 var
     i: integer; //loop index
     treeNode: TTreeNode; //new tree node
     deviceName: string; //full device name
 begin
+    //some problems with threading - WHERE?
+    //POSSIBLY: double entrance to critical section
+    //maybe use QueueUserAPC?
     //TODO: add images to nodes + add mount points if there are any
     //formatting device name
-    deviceName := WideCharToString(@(Device.Name)[1]) + ' - '
-        + WideCharToString(@(Device.Description)[1]);
+    deviceName := Device.Name + ' - ' + Device.Description;
     //adding a new tree node
     treeNode := Self.fMainWnd.DeviceTreeView.Items.AddChild(Parent, deviceName);
+    treeNode.ImageIndex := index;
     //performing the same operations on children
-    for i := 0 to Device.ChildCount -1 do
+    for i := 0 to Device.ChildCount-1 do
     begin
-        AddTreeItems(Device.Children[i], treeNode);
+        AddTreeItems(Device.Children[i], treeNode, index+1);
     end;
 end; //TMainFormController.AddTreeItems
 
