@@ -23,6 +23,7 @@ type
   { TMainWnd }
 
   TMainWnd = class(TForm)
+    DeviceImageList: TImageList;
     MenuImageList: TImageList;
     TVMIEject: TMenuItem;
     MIViewSettings: TMenuItem;
@@ -141,6 +142,7 @@ end; //FormCloseQuery
 procedure TMainWnd.FormCreate(Sender: TObject);
 begin
     controller := TMainFormController.Create(self);
+    controller.Refresh;
 end; //TMainWnd.FormCreate
 
 //Form destruction event handler. Destroys the controller
