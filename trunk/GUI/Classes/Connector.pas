@@ -364,7 +364,7 @@ var
   info:   OPINFO;  //operation info cache
   numrd:  DWORD;   //number ow bytes read
   deviceInfo: DEVINFO; //device info cache
-  i:      integer; //loop index
+  i:      SIZE_T; //loop index
   strbuf: TWideCharArray;  //mount points buffer
   device: TDevice; //temporary buffer for device
 begin
@@ -380,10 +380,13 @@ begin
     //creating a new device
     device := TDevice.Create(deviceInfo);
     //reading device mount points (if there are any)
-    for i := 0 to deviceInfo.MountPtsCount - 1 do
-    begin
-      ReadFile(self.hInPipeHandle, strbuf, MAX_PATH, numrd, nil);
-      device.AddMountPoint(strbuf);
+    if deviceInfo.MountPtsCount >0
+    then begin
+        for i := 0 to deviceInfo.MountPtsCount - 1 do
+        begin
+          ReadFile(self.hInPipeHandle, strbuf, MAX_PATH, numrd, nil);
+          device.AddMountPoint(strbuf);
+        end;
     end;
     //pushing device to the list
     PushDevice(device, deviceInfo);

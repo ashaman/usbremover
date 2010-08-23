@@ -42,9 +42,9 @@ TWideCharArray = array[0..MAX_PATH] of WideChar;
     	//device level: 1-2-3
       dwDeviceLevel: DWORD;
      	//device number by order
-      dwDeviceNumber: DWORD;
+      dwDeviceNumber: SIZE_T;
      	//top device index
-      dwTopIndex: DWORD;
+      dwTopIndex: SIZE_T;
   end;
   PDEVINDEX = ^DEVINDEX;
 
@@ -53,7 +53,7 @@ TWideCharArray = array[0..MAX_PATH] of WideChar;
       //indexes information
       devIndex: DEVINDEX;
       //parent number
-      dwParent: DWORD;
+      dwParent: SIZE_T;
       //device description
       description: TWideCharArray;
       //name
