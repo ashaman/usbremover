@@ -17,6 +17,13 @@
 #include <stdio.h>
 #include "SrvMain.h"
 
+#ifdef DEBUG
+	#define _CRTDBG_MAP_ALLOC
+	#include <stdlib.h>
+	#include <crtdbg.h>
+_CrtMemState s1, s2, s3;
+#endif
+
 /*
 	Forward declaration of functions
 */
@@ -70,16 +77,18 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	/* 
 		Initializing core of the service
 	*/
+#ifdef DEBUG
+	_CrtMemCheckpoint(&s1);
+#endif
 	dispatcher = new ServiceDispatcher(serviceStatusHandle,
 		DEVICE_NOTIFY_SERVICE_HANDLE);
 
 	//Set the status to Running
 	ReportServiceStatus(SERVICE_RUNNING, NO_ERROR);
 
-	//Sleep(10000);
-
 	//Here - the work of service! It works until the "STOP" command is received
 	dispatcher->HandleRequests(serviceStatus);
+
 }
 
 
@@ -131,6 +140,13 @@ DWORD WINAPI ServiceControl(DWORD dwControlCode, DWORD dwEventType,
 			dwSvcStatus = SERVICE_STOPPED;
 			//deleting dispatcher
 			ServiceDispatcher::TerminateDispatcherThread(dispatcher);
+#ifdef DEBUG
+			_CrtMemCheckpoint(&s2);
+			if (_CrtMemDifference(&s3, &s1, &s2))
+				_CrtMemDumpStatistics(&s3);
+			_CrtDumpMemoryLeaks();
+#endif
+
 			break;
 		}
 	case SERVICE_CONTROL_DEVICEEVENT:

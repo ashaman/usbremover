@@ -48,6 +48,8 @@ ServiceDispatcher::ServiceDispatcher(HANDLE hStatusHandle, DWORD flags)
 	this->msgmgr->AttachListener(*(this->devmgr));
 	this->devmgr->AttachListener(this);
 	this->procmgr->AttachListener(this);
+	//no connection
+	this->connected = false;
 	//duplicating thread handle
 	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(),
 		&hDispatcherThread,	DUPLICATE_SAME_ACCESS, FALSE, DUPLICATE_SAME_ACCESS);
@@ -83,6 +85,7 @@ void ServiceDispatcher::CreateChannel()
 	{
 		throw WinAPIException(GetLastError());
 	}
+	this->connected = true;
 }
 
 /*
@@ -99,7 +102,8 @@ ServiceDispatcher::~ServiceDispatcher()
 	//closing communication channels
 	DisconnectNamedPipe(this->hOutPipeHandle);
 	CloseHandle(this->hOutPipeHandle);
-	CloseHandle(this->hInPipeHandle);
+	if (this->connected)
+		CloseHandle(this->hInPipeHandle);
 }
 
 /*
@@ -170,6 +174,8 @@ void ServiceDispatcher::HandleRequests(SERVICE_STATUS &status)
 			//calling fileRead
 			if (!ReadFile(this->hInPipeHandle, &buffer, sizeof(OPINFO), &rdbytes, NULL))
 			{
+				//no connection
+				this->connected = false;
 				//error code
 				DWORD errorCode = GetLastError();
 				//if the pipe was broken (connection closed)
@@ -178,7 +184,6 @@ void ServiceDispatcher::HandleRequests(SERVICE_STATUS &status)
 					(errorCode == ERROR_PIPE_NOT_CONNECTED))
 				{
 					//we try to reconnect
-					RevertToSelf();
 					DisconnectNamedPipe(this->hOutPipeHandle);
 					CloseHandle(this->hInPipeHandle);
 					CloseHandle(this->hOutPipeHandle);
@@ -225,7 +230,11 @@ void ServiceDispatcher::HandleRequests(SERVICE_STATUS &status)
 */
 void ServiceDispatcher::RefreshState()
 {
-	this->SendDeviceInfo();
+	//27.08.2010 - we send info only if there's a connection
+	if (this->connected)
+	{
+		this->SendDeviceInfo();
+	}
 }
 
 /*
@@ -249,7 +258,11 @@ void ServiceDispatcher::ResolveQuery(POPINFO pOperInfo)
 		//try to eject device
 	case DEVICE_EJECT_REQUEST:
 		{
-			this->EjectDevice();
+			//added 27.08.2010 - "no connection-no work!"
+			if (this->connected)
+			{
+				this->EjectDevice();
+			}
 			break;
 		}
 		//forced ejection

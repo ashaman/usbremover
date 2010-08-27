@@ -19,7 +19,7 @@
 	#define _CRTDBG_MAP_ALLOC
 	#include <stdlib.h>
 	#include <crtdbg.h>
-_CrtMemState s1, s2, s3;
+//_CrtMemState s1, s2, s3;
 #endif
 
 #include <stdio.h>

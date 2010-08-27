@@ -38,6 +38,7 @@ private:
 	HANDLE hInPipeHandle; //incoming pipe handle
 	HANDLE hOutPipeHandle; //outgoing pipe handle
 	HANDLE hDispatcherThread; //dispatcher thread
+	bool connected; //if the pipes are connected
 
 	~ServiceDispatcher(); //destructor
 	void CreateChannel(); //creating named pipe
