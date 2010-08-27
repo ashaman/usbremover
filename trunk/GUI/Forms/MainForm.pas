@@ -14,7 +14,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  Menus, ExtCtrls, ComCtrls, PopupNotifier, LCLType,
+  Menus, ExtCtrls, ComCtrls, LCLType,
   Settings; //application settings
 
 type
@@ -75,7 +75,6 @@ type
     procedure TrayIconMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
   private
-    { private declarations }
   public
     { public declarations }
   end; 
@@ -155,14 +154,14 @@ end; //TMainWnd.FormDestroy
 //icon in the tray area
 procedure TMainWnd.FormHide(Sender: TObject);
 begin
-  TrayIcon.Show;
+  //TrayIcon.Show;
 end; //TMainWnd.FormHide
 
 //Form showing handler. Shows the main form and hides the program
 //icon in the tray area
 procedure TMainWnd.FormShow(Sender: TObject);
 begin
-  TrayIcon.Hide;
+  //TrayIcon.Hide;
 end; //TMainWnd.FormShow
 
 //Ejects the device (through controller)
@@ -170,8 +169,7 @@ procedure TMainWnd.MICommandEjectClick(Sender: TObject);
 begin
     if Assigned(Self.DeviceTreeView.Selected)
     then begin
-        controller.RemoveDrive(Self.DeviceTreeView.Selected.Level,
-            Self.DeviceTreeView.Selected.Index);
+        controller.RemoveDrive(Self.DeviceTreeView.Selected.Data);
     end;
 end; //TMainWnd.MICommandEjectClick
 

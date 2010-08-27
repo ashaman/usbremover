@@ -19,6 +19,7 @@ const
      //all is vice versa (compare to server side)
      PIPE_OUTGOING_NAME: WideString = '\\.\pipe\usbremover_inc';
      PIPE_INCOMING_NAME: WideString = '\\.\pipe\usbremover_out';
+
      //mount points separator
      MTPNT_SEPARATOR: WideChar = '?';
      MAXSTRINGLEN: DWORD = MAX_PATH+1;
@@ -98,6 +99,11 @@ const
     PROCESS_KILL_REJECT = 23; //I
     PROCESS_LOCK_INFO = 24; //I
 
+// Windows messages
+    //indicates that the window should be refreshed
+    WM_REFRESH_ANSWER = WM_USER + DEVICE_REFRESH_ANSWER;
+    //tells about the device ejection failure
+    WM_EJECT_ACCEPT = WM_USER + DEVICE_EJECT_ACCEPT;
 
 implementation
 
