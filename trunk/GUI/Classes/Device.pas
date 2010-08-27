@@ -29,8 +29,10 @@ type
         fName: WideString; //device name
         fMountPoints: TStrings; //device mount points
 
-        function GetChildCount: integer; //child count
         function GetChild(index: integer): TDevice; //gets a child device
+        function GetChildCount: integer; //child count
+        function GetMountPoint(index: integer): string; //mpoint
+        function GetMountPointCount: integer; //mpcount
     public
         constructor Create(deviceInfo: DEVINFO); //constructor
         destructor Destroy; override; //destructor
@@ -39,12 +41,40 @@ type
         procedure AddMountPoint(point: TWideCharArray); //adds a device mount point
         property ChildCount: integer read GetChildCount; //child count
         property Children[index: integer]: TDevice read GetChild; //children
-        property Index: DEVINDEX read fIndex; //device index
         property Description: WideString read fDescription; //description
+        property Index: DEVINDEX read fIndex; //device index
+        property MountPointCount: integer read GetMountPointCount; //mtps count
+        property MountPoints[index: integer]: string read GetMountPoint; //mpts
         property Name: WideString read fName; //device name
     end;
 
 implementation
+
+{
+    Purpose:
+        Gets the mount point by index
+    Parameters:
+        index - mount point index
+    Return value:
+        String with the mount point
+}
+function TDevice.GetMountPoint(index: integer): string;
+begin
+    Result := Self.fMountPoints.Strings[index];
+end; //GetMountPoint
+
+{
+    Purpose:
+        Get the number of mount points
+    Parameters:
+        None
+    Return value:
+        Total count of mount points
+}
+function TDevice.GetMountPointCount: integer;
+begin
+    Result := Self.fMountPoints.Count;
+end; //GetMountPointCount
 
 {
     Purpose:
@@ -57,7 +87,7 @@ implementation
 function TDevice.GetChildCount: integer;
 begin
     Result := fChildren.Count;
-end; //etChildCount
+end; //GetChildCount
 
 {
     Purpose:
@@ -70,7 +100,7 @@ end; //etChildCount
 procedure TDevice.AddMountPoint(point: TWideCharArray);
 begin
     fMountPoints.Add(Trim(point));
-end;
+end; //AddMountPoint
 
 {
     Purpose:

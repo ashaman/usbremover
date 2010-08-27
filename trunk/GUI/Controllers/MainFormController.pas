@@ -7,17 +7,6 @@
     Main form controller declaration and implementation
 }
 
-{
-    WARNING!!!
-    Here VCL components are accessed from another thread.
-    They are NOT thread-safe!!! Sometimes the refresh from the
-    background thread works fine, sometimes it causes the access
-    violation. I found no better way than to use SuspendThread-ResumeThread
-    to synchronize with the view
-
-    P.S. APC doesn't work with VCL :'( What a pity...
-    Maybe it's better to send a message to the main window?
-}
 unit MainFormController;
 
 {$mode objfpc}{$H+}
@@ -25,8 +14,8 @@ unit MainFormController;
 interface
 
 uses
-  Classes, SysUtils, Connector, Menus, ExtCtrls, MainForm, Communication,
-  Device, ComCtrls, Forms;
+  Classes, SysUtils, Connector, Menus, ExtCtrls, MainForm, BlockedFilesForm,
+  Communication,Device, ComCtrls, Forms, Windows, BlockedFilesFormController;
 
 const
     { ToolBar state labels }
@@ -62,112 +51,143 @@ type
         procedure OnRemovalSucceeded(Sender: TObject); //removal succeded handler
 
         procedure AddTreeItems(Device: TDevice; Parent: TTreeNode;
-            index: integer); //adds items
+            index: integer); //adds items to the TreeView
+        procedure FillView; //fills the view with the data
+        procedure ShowTrayIcon(TitleIndex: integer; Hint: String;
+            Flags: TBalloonFlags); //fills the tray icon data and shows it
 
     public
-        constructor Create(mainWnd: TMainWnd); //constructor
+        constructor Create(connector: TPipeConnector;
+            mainWnd: TMainWnd); //constructor
         destructor Destroy; override; //destructor
 
         procedure Refresh; //refreshes view state
         procedure RemoveDrive(Data: Pointer); //removes the device
         procedure SwitchToolBar; //switches the toolbar
+        procedure ResolveMessages(var Message: TMessage); //message handler
     end;
+
+var
+    fPipeConnector: TPipeConnector;
 
 implementation
 
 {EVENT HANDLERS}
 
+//handles window messages
+procedure TMainFormController.ResolveMessages(var Message: TMessage);
+var
+    Code: DWORD;
+begin
+    //getting the code of message
+    Code := DWORD(Message.wParam);
+    case Code of
+        //refresh finished
+        WM_REFRESH_ANSWER:
+        begin
+            Self.FillView;
+        end;
+        //ejected successfully
+        WM_EJECT_ACCEPT:
+        begin
+            Self.ShowTrayIcon(1, 'Device "' + Self.fEJDevice.Name +
+                '" ejected successfully!', bfInfo);
+        end;
+        //ejection failed
+        WM_EJECT_REJECT:
+        begin
+            Self.ShowTrayIcon(1, 'Device "' + Self.fEJDevice.Name +
+                '" ejection failed!', bfError);
+            BlockedFilesWnd.Show;
+            //SendNotifyMessageW(blockController.FormHandle,
+            //    WM_USBREMOVER, WPARAM(WM_SHOW_LOCK_FORM) , LPARAM(nil));
+        end;
+    end;
+end; //TMainFormController.ResolveMessages
+
 //handles the refresh finish
 procedure TMainFormController.OnRefreshFinished(Sender: TObject);
-var
-    i: integer; //loop index
 begin
-    try
-        //TODO: add devices to the tree + to the menus (popup)
-        {
-            WARNING!!!
-            HERE main VCL thread is SUSPENDED! No messages
-            from the system and other windows can be handled!!!
-            In order to handle messages, we call ProcessMessages
-        }
-        SuspendThread(self.fPipeConnector.MainThreadHandle);
-        Self.fMainWnd.DeviceTreeView.BeginUpdate;
-        Self.fMainWnd.DeviceTreeView.Items.BeginUpdate;
-        Self.fMainWnd.DeviceTreeView.Items.Clear;
-        Application.ProcessMessages;
-        //adding devices to root
-        for i := 0 to Self.fPipeConnector.DeviceCount-1 do
-        begin
-            Self.AddTreeItems(Self.fPipeConnector.Devices[i], nil, 0);
-            Application.ProcessMessages;
-        end;
-    finally
-        {
-            Resuming thread BEFORE any updates
-        }
-        ResumeThread(self.fPipeConnector.MainThreadHandle);
-        Self.fMainWnd.DeviceTreeView.FullExpand;
-        Self.fMainWnd.DeviceTreeView.Items.EndUpdate;
-        Self.fMainWnd.DeviceTreeView.EndUpdate;
-    end;
+    //sending message to the controls
+    SendNotifyMessageW(Self.fMainWnd.Handle, WM_USBREMOVER,
+        WPARAM(WM_REFRESH_ANSWER), LPARAM(nil));
 end; //TMainFormController.OnRefreshFinished
 
 //handles the device removal success and shows the info in the tray
 procedure TMainFormController.OnRemovalSucceeded(Sender: TObject);
 begin
-    try
-        //removal succeeded - we set all the tray icon parameters
-        //suspending the main thread
-        SuspendThread(Self.fPipeConnector.MainThreadHandle);
-        //setting balloon title - "Removal succeeded"
-        Self.fMainWnd.TrayIcon.BalloonTitle := BalloonTitle[0];
-        //setting message
-        Self.fMainWnd.TrayIcon.BalloonHint := 'Device ' +
-            Self.fEJDevice.Name + ' was ejected successfully!';
-        //setting balloon timeout
-        Self.fMainWnd.TrayIcon.BalloonTimeout := BalloonTimeout;
-        //setting balloon flags (bfInformation - little blue "i")
-        Self.fMainWnd.TrayIcon.BalloonFlags := bfInfo;
-        //processing messages
-        Application.ProcessMessages;
-    finally
-        //resuming main thread
-        ResumeThread(Self.fPipeConnector.MainThreadHandle);
-        //showing the hint
-        Self.fMainWnd.TrayIcon.ShowBalloonHint;
-    end;
+    //sending message to the controls
+    SendNotifyMessageW(Self.fMainWnd.Handle, WM_USBREMOVER,
+        WPARAM(WM_EJECT_ACCEPT), LPARAM(nil));
 end; //TMainFormController.OnRemovalSucceeded
 
 //handles the device removal failure and shows the handle search form
 procedure TMainFormController.OnRemovalFailed(Sender: TObject);
 begin
-    try
-        //removal failed - we set all the tray icon parameters
-        //suspending the main thread
-        SuspendThread(Self.fPipeConnector.MainThreadHandle);
-        //setting balloon header - "Removal failed!"
-        Self.fMainWnd.TrayIcon.BalloonTitle := BalloonTitle[1];
-        //setting balloon text
-        Self.fMainWnd.TrayIcon.BalloonHint := 'Device ' +
-            Self.fEJDevice.Name + ': removal failed!';
-        //setting balloon timeout
-        Self.fMainWnd.TrayIcon.BalloonTimeout := BalloonTimeout;
-        //setting balloon flags - little "x" in a red circle
-        Self.fMainWnd.TrayIcon.BalloonFlags := bfError;
-        //processing messages
-        Application.ProcessMessages;
-        //TODO: add progress form!!!
-        //It should be called from another thread... very bad...
-        //maybe it's better to use messages?
-    finally
-        //resuming main thread
-        ResumeThread(Self.fPipeConnector.MainThreadHandle);
-        //showing the balloon
-        Self.fMainWnd.TrayIcon.ShowBalloonHint;
-    end;
+    //sending message to the controls
+    SendNotifyMessageW(Self.fMainWnd.Handle, WM_USBREMOVER,
+        WPARAM(WM_EJECT_REJECT), LPARAM(nil));
 end; //TMainFormController.OnRemovalFailed
 
 {END EVENT HANDLERS}
+
+{
+    Purpose:
+        Fills the tray icon with the data
+    Parameters:
+        titleIndex - index of the balloon title in the array
+        hint - message shown on the balloon hint
+        flags - balloon flags
+    Return value:
+        None
+}
+procedure TMainFormController.ShowTrayIcon(TitleIndex: integer;
+    Hint: String; Flags: TBalloonFlags);
+begin
+    try
+        //setting balloon title
+        Self.fMainWnd.TrayIcon.BalloonTitle := BalloonTitle[TitleIndex];
+        //setting balloon text
+        Self.fMainWnd.TrayIcon.BalloonHint := Hint;
+        //setting balloon timeout
+        Self.fMainWnd.TrayIcon.BalloonTimeout := BalloonTimeout;
+        //setting balloon flags
+        Self.fMainWnd.TrayIcon.BalloonFlags := Flags;
+    finally
+        //showing the balloon
+        Self.fMainWnd.TrayIcon.ShowBalloonHint;
+    end;
+end; //TMainFormController.ShowTrayIcon
+
+{
+    Purpose:
+        Fills the view with the information from the connector
+    Parameters:
+        None
+    Return value:
+        None
+}
+procedure TMainFormController.FillView;
+var
+    i: integer; //loop index
+begin
+    try
+        //starting the device's list update process
+        Self.fMainWnd.DeviceTreeView.BeginUpdate;
+        Self.fMainWnd.DeviceTreeView.Items.BeginUpdate;
+        Self.fMainWnd.DeviceTreeView.Items.Clear;
+        //adding devices to root
+        for i := 0 to Self.fPipeConnector.DeviceCount-1 do
+        begin
+            Self.AddTreeItems(Self.fPipeConnector.Devices[i], nil, 0);
+        end;
+    finally
+        //finishing the update process
+        Self.fMainWnd.DeviceTreeView.FullExpand;
+        Self.fMainWnd.DeviceTreeView.Items.EndUpdate;
+        Self.fMainWnd.DeviceTreeView.EndUpdate;
+    end;
+end; //TMainFormController.FillView
 
 {
     Purpose:
@@ -188,14 +208,24 @@ var
 begin
     //TODO: add images to nodes + add mount points if there are any
     //formatting device name
-    deviceName := Device.Name + ' - ' + Device.Description;
+    deviceName := WideFormat('%0:S - %1:S',[Device.Name, Device.Description]);
     //adding a new tree node
-    treeNode := Self.fMainWnd.DeviceTreeView.Items.AddChild(Parent, deviceName);
+    treeNode := Self.fMainWnd.DeviceTreeView.Items.AddChild(Parent,
+        WideToUTF8String(deviceName));
     //attaching the data
     treeNode.Data := Device;
     //image indexes - common and selected
     treeNode.ImageIndex := index;
     treeNode.SelectedIndex := index;
+    //adding mount points (if there are any)
+    if Device.MountPointCount > 0
+    then begin
+        for i := 0 to Device.MountPointCount-1 do
+        begin
+            Self.fMainWnd.DeviceTreeView.Items.AddChild(treeNode,
+                Device.MountPoints[i]);
+        end;
+    end;
     //performing the same operations on children
     for i := 0 to Device.ChildCount-1 do
     begin
@@ -268,9 +298,11 @@ end; //TMainFormController.Refresh
         Initializes a new instance of controller and passes
         the main form as an argument
     Parameters:
+        connector - pipe connector
         mainWnd - main window pointer
 }
-constructor TMainFormController.Create(mainWnd: TMainWnd);
+constructor TMainFormController.Create(connector: TPipeConnector;
+    mainWnd: TMainWnd);
 begin
     inherited Create;
     Self.fMainWnd := mainWnd;
