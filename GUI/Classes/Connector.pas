@@ -25,6 +25,7 @@ type
   private
     hInPipeHandle:   HANDLE; //in pipe handle
     hOutPipeHandle: HANDLE; //out pipe handle
+    hMainThreadHandle: HANDLE; //main thread handle
     hThreadHandle: HANDLE; //thread handle
     fDevices:      TList;  //all the devices
     fProcesses: TList; //all the processes
@@ -53,6 +54,7 @@ type
     property DeviceCount: integer read GetDeviceCount; //device count
     property Devices[index: integer]: TDevice read GetDevice; //devices
     procedure EjectDevice(index: DEVINDEX); //tries to eject the device
+    property MainThreadHandle: HANDLE read hMainThreadHandle; //thread handle
     property ProcessCount: integer read GetProcessCount; //process count
     property Processes[index: integer]: TProcess read GetProcess; //processes
     procedure Refresh; //causes a device list refresh
@@ -489,15 +491,15 @@ begin
     //TODO: implement exceptions on timeout and do application
     //termination support in case there's no connection to the service
     inherited Create;
+    //creating second communication channel client->server
+    Self.hOutPipeHandle := CreateNamedPipeW(@PIPE_OUTGOING_NAME[1],
+          PIPE_ACCESS_OUTBOUND, PIPE_TYPE_BYTE or PIPE_READMODE_BYTE or PIPE_WAIT,
+          1, 0, 0, 200, nil);
     //connecting to the named pipe servier->client
     WaitNamedPipeW(@PIPE_INCOMING_NAME[1], DWORD(NMPWAIT_WAIT_FOREVER));
     Self.hInPipeHandle := CreateFileW(@PIPE_INCOMING_NAME[1], GENERIC_READ,
       FILE_SHARE_READ or FILE_SHARE_WRITE, nil,
       OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-    //creating second communication channel client->server
-    Self.hOutPipeHandle := CreateNamedPipeW(@PIPE_OUTGOING_NAME[1],
-          PIPE_ACCESS_OUTBOUND, PIPE_TYPE_BYTE or PIPE_READMODE_BYTE or PIPE_WAIT,
-          1, 0, 0, 200, nil);
     if ((Self.hInPipeHandle = INVALID_HANDLE_VALUE) or
       (Self.hOutPipeHandle = INVALID_HANDLE_VALUE)) then
     begin
@@ -520,6 +522,10 @@ begin
     fProcesses := TList.Create;
     //initializing critical section
     InitializeCriticalSection(csThreading);
+    //getting main thread handle
+    DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
+        GetCurrentProcess(), @Self.hMainThreadHandle, DUPLICATE_SAME_ACCESS,
+        FALSE, DUPLICATE_SAME_ACCESS);
     //creating monitor thread
     self.hThreadHandle := CreateThread(nil, 0, @MonitorFunction,
       LPCVOID(nil), 0, threadId);
@@ -549,6 +555,8 @@ begin
     DisconnectNamedPipe(Self.hOutPipeHandle);
     CloseHandle(self.hInPipeHandle);
     CloseHandle(self.hOutPipeHandle);
+    //closing main thread handle
+    CloseHandle(self.hMainThreadHandle);
     inherited Destroy;
 end; //destructor
 

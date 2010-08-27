@@ -1,7 +1,7 @@
 object MainWnd: TMainWnd
-  Left = 285
+  Left = 377
   Height = 376
-  Top = 164
+  Top = 171
   Width = 533
   Caption = 'USBRemover'
   ClientHeight = 356
@@ -1935,8 +1935,10 @@ object MainWnd: TMainWnd
     Width = 533
     Align = alClient
     DefaultItemHeight = 32
+    Font.CharSet = 4
     HideSelection = False
     Images = DeviceImageList
+    ParentFont = False
     ParentShowHint = False
     PopupMenu = TreeViewPopupMenu
     ReadOnly = True
@@ -6663,8 +6665,6 @@ object MainWnd: TMainWnd
   end
   object DeviceImageList: TImageList
     Height = 32
-    ImageType = itMask
-    ShareImages = True
     Width = 32
     left = 352
     top = 248
