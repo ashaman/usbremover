@@ -8,7 +8,7 @@ uses
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, LResources, MainForm, Settings, Connector, Device, Process, 
-MainFormController, BlockedFilesForm;
+MainFormController, BlockedFilesForm, BlockedFilesFormController, Mediator;
 
 {$IFDEF WINDOWS}{$R USBRemover.rc}{$ENDIF}
 
@@ -18,9 +18,9 @@ begin
   //here we hide the main form
   Application.ShowMainForm := false;
   Application.CreateForm(TMainWnd, MainWnd);
+  Application.CreateForm(TBlockedFilesWnd, BlockedFilesWnd);
   //and here we hide it from the taskbar
   MainWnd.ShowInTaskBar := stNever;
-  Application.CreateForm(TBlockedFilesWnd, BlockedFilesWnd);
   BlockedFilesWnd.ShowInTaskBar := stNever;
   Application.Run;
 end.

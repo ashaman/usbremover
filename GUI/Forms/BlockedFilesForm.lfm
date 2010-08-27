@@ -1,8 +1,116 @@
 object BlockedFilesWnd: TBlockedFilesWnd
-  Left = 290
-  Height = 300
-  Top = 189
-  Width = 400
-  Caption = 'BlockedFilesWnd'
+  Left = 322
+  Height = 379
+  Top = 145
+  Width = 365
+  Caption = 'Ejection failed!'
+  ClientHeight = 379
+  ClientWidth = 365
+  OnCreate = FormCreate
   LCLVersion = '0.9.28.2'
+  object ButtonPanel: TPanel
+    Left = 0
+    Height = 51
+    Top = 328
+    Width = 365
+    Align = alBottom
+    ChildSizing.LeftRightSpacing = 10
+    ChildSizing.TopBottomSpacing = 10
+    ChildSizing.HorizontalSpacing = 10
+    ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+    ChildSizing.EnlargeVertical = crsHomogenousChildResize
+    ChildSizing.ShrinkHorizontal = crsHomogenousChildResize
+    ChildSizing.ShrinkVertical = crsHomogenousChildResize
+    ChildSizing.Layout = cclLeftToRightThenTopToBottom
+    ChildSizing.ControlsPerLine = 4
+    ClientHeight = 51
+    ClientWidth = 365
+    TabOrder = 0
+    object BtnTryAgain: TButton
+      Left = 10
+      Height = 31
+      Top = 10
+      Width = 73
+      Caption = 'Try again'
+      TabOrder = 0
+    end
+    object BtnKillProcess: TButton
+      Left = 93
+      Height = 31
+      Top = 10
+      Width = 80
+      Caption = 'Kill process'
+      TabOrder = 1
+    end
+    object BtnForcedRemoval: TButton
+      Left = 183
+      Height = 31
+      Top = 10
+      Width = 102
+      Caption = 'Forced removal'
+      TabOrder = 2
+    end
+    object BtnCancel: TButton
+      Left = 295
+      Height = 31
+      Top = 10
+      Width = 60
+      Caption = 'Cancel'
+      TabOrder = 3
+    end
+  end
+  object TopPanel: TPanel
+    Left = 0
+    Height = 48
+    Top = 0
+    Width = 365
+    Align = alTop
+    ClientHeight = 48
+    ClientWidth = 365
+    TabOrder = 1
+    object WarningMemo: TMemo
+      Left = 1
+      Height = 46
+      Top = 1
+      Width = 363
+      Align = alClient
+      BorderStyle = bsNone
+      Color = clBtnFace
+      Lines.Strings = (
+        'Device removal failed because of the opened files located on it. Close all '
+        'the applications which has opened the file on the device and the retry to '
+        'eject it. Or you may perform a forced removal'
+      )
+      ReadOnly = True
+      TabOrder = 0
+    end
+  end
+  object ProcessTreeView: TTreeView
+    Left = 0
+    Height = 254
+    Top = 48
+    Width = 365
+    Align = alClient
+    DefaultItemHeight = 15
+    TabOrder = 2
+  end
+  object ProgressPanel: TPanel
+    Left = 0
+    Height = 26
+    Top = 302
+    Width = 365
+    Align = alBottom
+    Caption = 'ProgressPanel'
+    ClientHeight = 26
+    ClientWidth = 365
+    TabOrder = 3
+    object ProgressBar: TProgressBar
+      Left = 1
+      Height = 24
+      Top = 1
+      Width = 363
+      Align = alClient
+      TabOrder = 0
+    end
+  end
 end

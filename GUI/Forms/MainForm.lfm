@@ -1,7 +1,7 @@
 object MainWnd: TMainWnd
-  Left = 377
+  Left = 303
   Height = 376
-  Top = 171
+  Top = 172
   Width = 533
   Caption = 'USBRemover'
   ClientHeight = 356
@@ -1945,6 +1945,7 @@ object MainWnd: TMainWnd
     RightClickSelect = True
     ShowHint = True
     TabOrder = 1
+    OnSelectionChanged = DeviceTreeViewSelectionChanged
     Options = [tvoAutoItemHeight, tvoKeepCollapsedNodes, tvoReadOnly, tvoRightClickSelect, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips]
   end
   object MainMenu: TMainMenu

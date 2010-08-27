@@ -14,8 +14,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  Menus, ExtCtrls, ComCtrls, LCLType,
-  Settings; //application settings
+  Menus, ExtCtrls, ComCtrls, LCLType, Messages,
+  Communication, Settings; //application settings
 
 type
 
@@ -58,6 +58,7 @@ type
     ToolBar: TToolBar;
     TrayIcon: TTrayIcon;
     DeviceTreeView: TTreeView;
+    procedure DeviceTreeViewSelectionChanged(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -75,6 +76,9 @@ type
     procedure TrayIconMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
   private
+    fSupressTrayMenus: boolean; //supress or not
+
+    procedure HandleUSRMessage(var Message: TMessage); message WM_USBREMOVER;
   public
     { public declarations }
   end; 
@@ -93,6 +97,12 @@ var
 
 { TMainWnd }
 
+//Window message handler
+procedure TMainWnd.HandleUSRMessage(var Message: TMessage);
+begin
+    controller.ResolveMessages(Message);
+end; //TMainWnd.HandleUSRMessage
+
 //Shows the main form after a double click on the application
 procedure TMainWnd.TrayIconDblClick(Sender: TObject);
 begin
@@ -103,20 +113,24 @@ end; //TMainWnd.TrayIconDblClick
 procedure TMainWnd.TrayIconMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-    //for left-button click
-    if (Button = mbLeft)
+    //if menus are not supressed (form is hidden)
+    if not Self.fSupressTrayMenus
     then begin
-        //connecting disk ejection menu
-        Self.TrayIcon.PopUpMenu := Self.TrayDisksPopupMenu;
-        //TODO: add info to the menu and add click handlers
-    end
-    //for right-button click
-    else if (Button = mbRight)
-    then begin
-        //attaching application popup menu
-        Self.TrayIcon.PopUpMenu := Self.TrayAppPopupMenu;
-        //TODO: add info to the menu
-        //TODO: add images to image list and use them
+        //for left-button click
+        if (Button = mbLeft)
+        then begin
+            //connecting disk ejection menu
+            Self.TrayIcon.PopUpMenu := Self.TrayDisksPopupMenu;
+            //TODO: add info to the menu and add click handlers
+        end
+        //for right-button click
+        else if (Button = mbRight)
+        then begin
+            //attaching application popup menu
+            Self.TrayIcon.PopUpMenu := Self.TrayAppPopupMenu;
+            //TODO: add info to the menu
+            //TODO: add images to image list and use them
+        end;
     end;
 end; //TMainWnd.TrayIconMouseDown
 
@@ -137,11 +151,34 @@ begin
     end; //else - ExitOnClose is false
 end; //FormCloseQuery
 
+//Changing the selection and checking the Data pointers
+procedure TMainWnd.DeviceTreeViewSelectionChanged(Sender: TObject);
+begin
+    //if the selection is not lost
+    if Assigned(Self.DeviceTreeView.Selected)
+    then begin
+        //if data is assigned, it means that we are on the device node
+        if Assigned(Self.DeviceTreeView.Selected.Data)
+        then begin
+            Self.DeviceTreeView.PopupMenu := Self.TreeViewPopupMenu;
+            Self.TBEject.Enabled := true;
+            Self.MICommandEject.Enabled := true;
+        end
+        //else it's a mount point node
+        else begin
+            Self.DeviceTreeView.PopupMenu := nil;
+            Self.TBEject.Enabled := false;
+            Self.MICommandEject.Enabled := false;
+        end;
+    end;
+end; //TMainWnd.DeviceTreeViewSelectionChanged
+
 //Form creation event handler. Creates the form controller
 procedure TMainWnd.FormCreate(Sender: TObject);
 begin
     controller := TMainFormController.Create(self);
     controller.Refresh;
+    Self.fSupressTrayMenus := false;
 end; //TMainWnd.FormCreate
 
 //Form destruction event handler. Destroys the controller
@@ -154,22 +191,27 @@ end; //TMainWnd.FormDestroy
 //icon in the tray area
 procedure TMainWnd.FormHide(Sender: TObject);
 begin
-  //TrayIcon.Show;
+    Self.fSupressTrayMenus := false;
 end; //TMainWnd.FormHide
 
 //Form showing handler. Shows the main form and hides the program
 //icon in the tray area
 procedure TMainWnd.FormShow(Sender: TObject);
 begin
-  //TrayIcon.Hide;
+    Self.fSupressTrayMenus := true;
 end; //TMainWnd.FormShow
 
 //Ejects the device (through controller)
 procedure TMainWnd.MICommandEjectClick(Sender: TObject);
 begin
+    //if the selection is ready
     if Assigned(Self.DeviceTreeView.Selected)
     then begin
-        controller.RemoveDrive(Self.DeviceTreeView.Selected.Data);
+        //if it is a device node
+        if Assigned(Self.DeviceTreeView.Selected.Data)
+        then begin
+            controller.RemoveDrive(Self.DeviceTreeView.Selected.Data);
+        end;
     end;
 end; //TMainWnd.MICommandEjectClick
 
