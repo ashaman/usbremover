@@ -26,9 +26,35 @@ type
         fPipeConnector: TPipeConnector; //pipe connector
     public
 
+        constructor Create;
+        destructor Destroy; override;
     end;
 
 implementation
+
+{
+    Purpose:
+        Constructor. Creates all controllers and connectors
+    Parameters:
+        None
+}
+constructor TMediator.Create;
+begin
+    inherited Create;
+    //creating the connector
+    Self.fPipeConnector := TPipeConnector.Create;
+    //TODO: create controllers and attach views
+end; //constructor
+
+{
+    Purpose:
+        Releases all relevant resources
+}
+destructor TMediator.Destroy;
+begin
+    Self.fPipeConnector.Destroy;
+    inherited Destroy;
+end; //destructor
 
 end.
 
