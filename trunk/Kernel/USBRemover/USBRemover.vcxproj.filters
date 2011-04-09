@@ -1,0 +1,155 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Devices">
+      <UniqueIdentifier>{5bf9aed5-37a9-4578-b21b-74c517eadd60}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Devices\Headers">
+      <UniqueIdentifier>{d7df8e6f-7d3a-487b-abc0-9a687a5ce16f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Devices\Sources">
+      <UniqueIdentifier>{162d2748-d6fa-42e2-8e68-a890adfd3971}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Service">
+      <UniqueIdentifier>{13bf070a-59d7-4882-9bf4-25374dbc9eb3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Service\Headers">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Service\Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="Service\Sources">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Exceptions">
+      <UniqueIdentifier>{9e909a24-7c8f-4e0f-995e-80007973e868}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Exceptions\Headers">
+      <UniqueIdentifier>{212955a0-c7a5-48cf-8847-55718ccbb71c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Exceptions\Sources">
+      <UniqueIdentifier>{ff5b25a6-29e7-4467-8178-d2e62b4afeb8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Managers">
+      <UniqueIdentifier>{f0483ed9-5ccd-49bd-bee8-4d406282caca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Managers\Headers">
+      <UniqueIdentifier>{019d3839-019e-48bf-8b37-1e4dda777c61}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Managers\Sources">
+      <UniqueIdentifier>{8c64e853-4452-4f99-aedd-e803c91b2e68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="APIWrapper">
+      <UniqueIdentifier>{1cc98344-5498-4bd5-9b11-a9e339fc77c6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Device.h">
+      <Filter>Devices\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Drive.h">
+      <Filter>Devices\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="USBDevice.h">
+      <Filter>Devices\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Volume.h">
+      <Filter>Devices\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Service\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="SrvMain.h">
+      <Filter>Service\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="VersionInfo.h">
+      <Filter>Service\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="BaseException.h">
+      <Filter>Exceptions\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="WinAPIException.h">
+      <Filter>Exceptions\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Communication.h">
+      <Filter>Managers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceManager.h">
+      <Filter>Managers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="IMessageListener.h">
+      <Filter>Managers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="MessageManager.h">
+      <Filter>Managers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessManager.h">
+      <Filter>Managers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ServiceDispatcher.h">
+      <Filter>Managers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="VolumeManager.h">
+      <Filter>Managers\Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ApiWrapper.h">
+      <Filter>APIWrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="ntdll.h">
+      <Filter>APIWrapper</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Device.cpp">
+      <Filter>Devices\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Drive.cpp">
+      <Filter>Devices\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="USBDevice.cpp">
+      <Filter>Devices\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Volume.cpp">
+      <Filter>Devices\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Main.cpp">
+      <Filter>Service\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="SrvMain.cpp">
+      <Filter>Service\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="BaseException.cpp">
+      <Filter>Exceptions\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="WinAPIException.cpp">
+      <Filter>Exceptions\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="DeviceManager.cpp">
+      <Filter>Managers\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="MessageManager.cpp">
+      <Filter>Managers\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessManager.cpp">
+      <Filter>Managers\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="ServiceDispatcher.cpp">
+      <Filter>Managers\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="VolumeManager.cpp">
+      <Filter>Managers\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="ApiWrapper.cpp">
+      <Filter>APIWrapper</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="USBRemover.rc">
+      <Filter>Service\Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>
